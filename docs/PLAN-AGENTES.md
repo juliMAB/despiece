@@ -1,6 +1,6 @@
 # Plan: modo agente (API local + MCP)
 
-> **Estado:** **modo agente completo — F1 a F4 implementadas** (2026-11-11).
+> **Estado:** **modo agente completo — F1 a F4 implementadas** y liberado como **v1.0.0** (2026-11-11).
 > **Decisión del usuario:** sí al modo agente; **no** a la optimización de corte (el carpintero se encarga del nesting).
 
 Este documento es el contrato de trabajo del "modo agente" de Despiece. Define qué se construye, qué no, cómo se comunican las partes y cuándo se considera terminado cada paso. Si algo no está acá, no está en el alcance hasta que se actualice este archivo.

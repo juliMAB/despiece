@@ -1,6 +1,6 @@
 {
   "name": "despiece",
-  "version": "0.8.0",
+  "version": "1.0.0",
   "description": "Diseñá muebles y obtené el despiece exacto de piezas para cortar. Libre, gratuito y sin backend.",
   "type": "module",
   "license": "MIT",

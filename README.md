@@ -2,9 +2,9 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.8 — modo agente completo (F1 a F4)**: comandos, undo, servidor local, MCP y panel en la UI.
-> Próximo hito: **materiales y costos + PDF de planos**.
-> Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
+> Estado: **v1.0.0 — primera versión estable.** Editor + despiece + visor 3D + modo agente completo (HTTP, WebSocket y MCP).
+> Repositorio **privado por ahora**: la publicación pública queda diferida hasta definir identidad y difusión.
+> Historial de versiones: [CHANGELOG.md](CHANGELOG.md).
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
 
@@ -160,8 +160,9 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.6-F2 | Servidor local con WebSocket + endpoints HTTP + badge de conexión | ✅ |
 | v0.7-F3 | **Adaptador MCP (stdio)**: 26 herramientas y 3 recursos | ✅ |
 | v0.8-F4 | **Modo agente en la UI**: log de comandos, resaltado de cambios, desconectar/reconectar | ✅ |
-| v0.9 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |
-| v1.0 | Más tipos de mueble, historial de versiones, exportación a CNC | ⏳ |
+| **v1.0.0** | **Primera versión estable**: editor, 3D y modo agente completo (F1–F4) | ✅ |
+| v1.1 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |
+| v1.x | Más tipos de mueble, historial de versiones, exportación a CNC | ⏳ |
 | — | **Publicación pública** (Pages, dominio, difusión) | ⏸ diferida |
 
 La publicación queda **en pausa a propósito**: primero el proyecto tiene que diferenciarse de la app de referencia que se usó para reconstruir el motor (identidad visual propia, funciones que el original no tenía, documentación y licencia claras), y recién después se abre al público.
