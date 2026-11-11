@@ -2,23 +2,22 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.2 — editor web funcionando**. El motor de despiece está validado y la app ya se puede usar en el navegador. El visor 3D está en camino.
+> Estado: **v0.2 — editor web funcionando**.
+> Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Editor de Despiece con la alacena de 2 puertas](docs/img/editor-alacena.png)
 
-## Probarlo
+## Probarlo (local)
 
-👉 **https://juliMAB.github.io/despiece/**
-
-No hay que instalar nada: abrís la página, elegís una plantilla y empezás a editar. Todo se calcula en tu navegador y los proyectos se guardan en tu propio equipo.
-
-También podés correrlo localmente:
+La app es estática y no tiene build: alcanza con servir la carpeta.
 
 ```bash
 git clone https://github.com/juliMAB/despiece.git
 cd despiece
 npm run serve      # http://127.0.0.1:8080
 ```
+
+Abrís `http://127.0.0.1:8080`, elegís una plantilla y empezás a editar. Todo se calcula en tu navegador y los proyectos se guardan en tu propio equipo.
 
 ## Qué hace
 
@@ -115,10 +114,13 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | Versión | Contenido | Estado |
 |---|---|---|
 | v0.1 | Motor de despiece + despiece agrupado + CSV + tests | ✅ |
-| v0.2 | Editor visual, plantillas, guardado local, import/export, publicación web | ✅ |
+| v0.2 | Editor visual, plantillas, guardado local, import/export | ✅ |
 | v0.3 | Visor 3D interactivo | 🚧 |
 | v0.4 | Materiales y espesores por proyecto, optimización de corte, PDF de planos | ⏳ |
 | v1.0 | PWA offline, historial de cambios, más tipos de mueble | ⏳ |
+| — | **Publicación pública** (Pages, dominio, difusión) | ⏸ diferida |
+
+La publicación queda **en pausa a propósito**: primero el proyecto tiene que diferenciarse de la app de referencia que se usó para reconstruir el motor (identidad visual propia, funciones que el original no tenía, documentación y licencia claras), y recién después se abre al público.
 
 ## Origen
 
