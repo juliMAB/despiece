@@ -11,6 +11,7 @@
 
 const CLAVE_ACTUAL = "despiece:actual:v1";
 const CLAVE_PROYECTOS = "despiece:proyectos:v1";
+const CLAVE_VISTA_3D = "despiece:vista3d:v1";
 
 const memoria = new Map();
 
@@ -125,4 +126,15 @@ export function borrarProyecto(id) {
 /** Indica si el almacenamiento persistente está disponible. */
 export function hayAlmacenamiento() {
   return Boolean(store);
+}
+
+/** Preferencia de vista: true = 3D, false = 2D (por defecto 3D). */
+export function leerVista3d() {
+  const valor = leer(CLAVE_VISTA_3D);
+  return valor === null || valor === undefined ? true : Boolean(valor);
+}
+
+/** Guarda la preferencia de vista. */
+export function guardarVista3d(valor) {
+  escribir(CLAVE_VISTA_3D, Boolean(valor));
 }

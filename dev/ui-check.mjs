@@ -122,6 +122,86 @@ async function main() {
   check("hay despiece inicial", filasIniciales > 0, `${filasIniciales} líneas`);
   await shot("ui-1-inicial.png");
 
+  /* ── visor 3D ─────────────────────────────────────────────────────────── */
+
+  const pixelesPintados = async () =>
+    evaluate(`
+      (() => {
+        const canvas = document.querySelector('.diagram-3d');
+        if (!canvas || !canvas.width) return 0;
+        const datos = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        let pintados = 0;
+        for (let i = 0; i < datos.length; i += 4) if (datos[i + 3] > 10) pintados++;
+        return pintados;
+      })()
+    `);
+
+  const firmaCanvas = async () =>
+    evaluate(`
+      (() => {
+        const canvas = document.querySelector('.diagram-3d');
+        if (!canvas || !canvas.width) return 0;
+        const datos = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        let hash = 0;
+        for (let i = 0; i < datos.length; i += 997) hash = (hash * 31 + datos[i]) >>> 0;
+        return hash;
+      })()
+    `);
+
+  check(
+    "la vista 3D arranca activa",
+    await evaluate(`document.querySelector('#diagrama').classList.contains('is-3d')`),
+  );
+  const pintadosInicial = await pixelesPintados();
+  check("el visor 3D dibuja el mueble", pintadosInicial > 2000, `${pintadosInicial} píxeles`);
+  await shot("ui-1b-3d.png");
+
+  const firmaAntes = await firmaCanvas();
+  await evaluate(`
+    (() => {
+      const canvas = document.querySelector('.diagram-3d');
+      const caja = canvas.getBoundingClientRect();
+      const x = caja.left + caja.width / 2;
+      const y = caja.top + caja.height / 2;
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: x, clientY: y, bubbles: true, pointerId: 1 }));
+      canvas.dispatchEvent(new PointerEvent('pointermove', { clientX: x + 130, clientY: y - 35, bubbles: true, pointerId: 1 }));
+      canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: x + 130, clientY: y - 35, bubbles: true, pointerId: 1 }));
+      return true;
+    })()
+  `);
+  await sleep(450);
+  const firmaDespues = await firmaCanvas();
+  check("arrastrar rota la vista 3D", firmaAntes !== firmaDespues);
+  await shot("ui-1c-rotado.png");
+
+  const firmaConFrentes = await firmaCanvas();
+  await evaluate(`document.querySelector('#chk-frentes').click()`);
+  await sleep(450);
+  const firmaSinFrentes = await firmaCanvas();
+  check("ocultar frentes cambia el dibujo", firmaConFrentes !== firmaSinFrentes);
+  await evaluate(`document.querySelector('#chk-frentes').click()`);
+  await sleep(350);
+
+  await evaluate(`document.querySelector('[data-vista3d="2d"]').click()`);
+  await sleep(350);
+  const es2d = await evaluate(
+    `!document.querySelector('#diagrama').classList.contains('is-3d') && !!document.querySelector('.diagram-2d svg')`,
+  );
+  check("se puede cambiar a vista 2D", es2d === true);
+  await shot("ui-1d-2d.png");
+
+  await evaluate(`document.querySelector('[data-vista3d="3d"]').click()`);
+  await sleep(450);
+  check(
+    "vuelve a la vista 3D",
+    await evaluate(`
+      (() => {
+        const canvas = document.querySelector('.diagram-3d');
+        return document.querySelector('#diagrama').classList.contains('is-3d') && canvas.width > 0 && canvas.height > 0;
+      })()
+    `),
+  );
+
   // 2) abrir una plantilla (cómoda)
   await evaluate(`
     (() => {

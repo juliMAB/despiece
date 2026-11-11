@@ -65,10 +65,25 @@
       <section class="design-panel">
         <div class="panel-card canvas-card">
           <div class="panel-head">
-            <h2>Vista</h2>
-            <span id="medidas-exteriores" class="muted"></span>
+            <div class="vista-head">
+              <h2>Vista</h2>
+              <div class="tabs tabs-vista" role="tablist">
+                <button class="tab tab-vista is-active" data-vista3d="3d" type="button">3D</button>
+                <button class="tab tab-vista" data-vista3d="2d" type="button">2D</button>
+              </div>
+            </div>
+            <div class="vista-acciones">
+              <label class="check" title="Mostrar u ocultar puertas y frentes de cajón">
+                <input id="chk-frentes" type="checkbox" checked />
+                <span>Frentes</span>
+              </label>
+              <span id="medidas-exteriores" class="muted"></span>
+            </div>
           </div>
-          <div id="diagrama" class="diagram"></div>
+          <div id="diagrama" class="diagram is-3d">
+            <div class="diagram-2d"></div>
+            <canvas class="diagram-3d" aria-label="Vista 3D del mueble"></canvas>
+          </div>
         </div>
 
         <div class="panel-card">

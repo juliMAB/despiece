@@ -25,6 +25,7 @@ import {
 import { TEMPLATES } from "../../templates/index.js";
 import { el, mount, metros, milimetros } from "./dom.js";
 import { renderDiagram } from "./render2d.js";
+import { crearVisor3D } from "./render3d.js";
 import * as storage from "./storage.js";
 
 /* ── tipos de módulo ─────────────────────────────────────────────────────── */
@@ -61,6 +62,7 @@ const state = {
   project: null, // { id, name, design }
   resultado: null, // salida del motor
   vista: "despiece", // despiece | mecanizados
+  vista3d: storage.leerVista3d(), // true = 3D, false = 2D
 };
 
 const $ = (id) => document.getElementById(id);
@@ -70,6 +72,10 @@ const refs = {
   listaPlantillas: $("lista-plantillas"),
   listaProyectos: $("lista-proyectos"),
   diagrama: $("diagrama"),
+  lienzo2d: document.querySelector("#diagrama .diagram-2d"),
+  canvas3d: document.querySelector("#diagrama .diagram-3d"),
+  chkFrentes: $("chk-frentes"),
+  tabsVista: [...document.querySelectorAll(".tab-vista")],
   medidas: $("medidas-exteriores"),
   controles: $("controles"),
   config: $("config"),
@@ -285,6 +291,30 @@ function descargar(nombre, contenido, tipo) {
 function compilar() {
   state.resultado = compileFurniture(state.project.design);
   return state.resultado;
+}
+
+/* ── visor 3D ────────────────────────────────────────────────────────────── */
+
+let visor3d = null;
+
+/** Crea el visor la primera vez que se necesita. */
+function asegurarVisor() {
+  if (!visor3d) {
+    visor3d = crearVisor3D(refs.canvas3d, { mostrarFrentes: refs.chkFrentes.checked });
+  }
+  return visor3d;
+}
+
+/** Aplica el modo de vista (3D o 2D) a la interfaz. */
+function aplicarVista() {
+  refs.diagrama.classList.toggle("is-3d", state.vista3d);
+  for (const tab of refs.tabsVista) {
+    const es3d = tab.dataset.vista3d === "3d";
+    tab.classList.toggle("is-active", es3d === state.vista3d);
+  }
+  if (state.vista3d) {
+    requestAnimationFrame(() => asegurarVisor().redimensionar());
+  }
 }
 
 /* ── renders ─────────────────────────────────────────────────────────────── */
@@ -514,12 +544,17 @@ function renderConfig() {
 function renderSalidas() {
   const resultado = state.resultado ?? compilar();
 
-  // diagrama
+  // vista 2D (se dibuja siempre; el CSS decide cuál se ve)
   const diagrama = renderDiagram(state.project.design);
   mount(
-    refs.diagrama,
+    refs.lienzo2d,
     diagrama ?? el("p", { class: "vacio", text: "Agregá una columna para ver el mueble." }),
   );
+
+  // vista 3D
+  const visor = asegurarVisor();
+  visor.actualizar(resultado.parts);
+  if (state.vista3d) requestAnimationFrame(() => visor.redimensionar());
 
   refs.medidas.textContent =
     `${metros(resultado.bounds.width)} × ${metros(resultado.bounds.height)} × ${metros(resultado.bounds.depth)} m`;
@@ -696,15 +731,27 @@ function conectarEventos() {
     event.target.value = "";
   });
 
-  for (const tab of document.querySelectorAll(".tab")) {
+  for (const tab of document.querySelectorAll(".tab:not(.tab-vista)")) {
     tab.addEventListener("click", () => {
       state.vista = tab.dataset.vista;
-      for (const otro of document.querySelectorAll(".tab")) {
+      for (const otro of document.querySelectorAll(".tab:not(.tab-vista)")) {
         otro.classList.toggle("is-active", otro === tab);
       }
       renderTabla();
     });
   }
+
+  for (const tab of refs.tabsVista) {
+    tab.addEventListener("click", () => {
+      state.vista3d = tab.dataset.vista3d === "3d";
+      storage.guardarVista3d(state.vista3d);
+      aplicarVista();
+    });
+  }
+
+  refs.chkFrentes.addEventListener("change", (evento) => {
+    asegurarVisor().setMostrarFrentes(evento.target.checked);
+  });
 }
 
 /* ── arranque ────────────────────────────────────────────────────────────── */
@@ -730,6 +777,7 @@ function arrancar() {
   conectarEventos();
   compilar();
   renderTodo();
+  aplicarVista();
 }
 
 arrancar();

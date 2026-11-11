@@ -239,17 +239,39 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .canvas-card { display: flex; flex-direction: column; }
 .diagram {
-  height: 360px;
+  position: relative;
+  height: 380px;
   background: var(--bg);
   border: 1px solid var(--line-soft);
   border-radius: 10px;
+  overflow: hidden;
+}
+.diagram-2d {
+  position: absolute;
+  inset: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
 }
-.diagram svg { width: 100%; height: 100%; }
+.diagram-2d svg { width: 100%; height: 100%; }
+.diagram-3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  touch-action: none;
+  cursor: grab;
+}
+.diagram.is-3d .diagram-2d { display: none; }
+.diagram.is-3d .diagram-3d { display: block; }
 .diagram .vacio { color: var(--dim); font-size: 13px; }
+
+.vista-head { display: flex; align-items: center; gap: 12px; }
+.vista-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.check { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--accent); }
+.diagram.is-3d + .diagram-nota { display: block; }
 
 /* ── controles de columnas y módulos ────────────────────────────────────── */
 
