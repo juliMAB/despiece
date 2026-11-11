@@ -10,3 +10,6 @@ chrome-*/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# capturas de las pruebas de UI
+.shots/

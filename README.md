@@ -2,56 +2,39 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.1 — motor terminado y validado**. El editor visual y el visor 3D están en desarrollo.
+> Estado: **v0.2 — editor web funcionando**. El motor de despiece está validado y la app ya se puede usar en el navegador. El visor 3D está en camino.
 
-## Qué hace
+![Editor de Despiece con la alacena de 2 puertas](docs/img/editor-alacena.png)
 
-A partir de un diseño paramétrico (columnas con módulos de puertas, cajones o estantes) el motor calcula:
+## Probarlo
 
-- **Todas las piezas** con sus medidas exactas de corte, posición y orientación.
-- **Los mecanizados**: perforaciones de tiradores (Ø, posición) y ranuras para el fondo en laterales, estantes y cajas de cajón.
-- **El despiece agrupado**: "18 placas de 550 × 1726", listo para el aserradero.
-- **Avisos de diseño** cuando algo no cierra (cajones que no entran, puertas demasiado angostas, etc.).
-- **Exportación CSV** para planilla.
+👉 **https://juliMAB.github.io/despiece/**
 
-## Por qué
+No hay que instalar nada: abrís la página, elegís una plantilla y empezás a editar. Todo se calcula en tu navegador y los proyectos se guardan en tu propio equipo.
 
-La mayoría de las apps de muebles son de escritorio, caras o cerradas. Despiece apunta a lo mínimo que necesita un carpintero o un hobbista:
-
-- corre en el navegador, sin instalar nada;
-- no necesita servidor ni registro (los proyectos quedan en tu máquina);
-- es código abierto, sin funciones pagas;
-- los cálculos son transparentes y auditables.
-
-## Uso rápido
-
-Requiere Node.js 20 o superior.
+También podés correrlo localmente:
 
 ```bash
 git clone https://github.com/juliMAB/despiece.git
 cd despiece
-npm test
+npm run serve      # http://127.0.0.1:8080
 ```
 
-Como librería:
+## Qué hace
 
-```js
-import { compileFurniture, buildCutlist, cutlistToCsv } from "./src/index.js";
+- **Editor visual**: agregá y quitá columnas, cambiá anchos, agregá módulos de puertas (par o simple), cajones o estantes, con su alto y cantidad de cajones.
+- **Despiece en vivo**: cada cambio recalcula todas las piezas con sus medidas exactas de corte.
+- **Resumen**: medidas exteriores, cantidad de piezas, líneas de corte, mecanizados y superficie de panel.
+- **Mecanizados**: perforaciones de tiradores (Ø y posición) y ranuras de fondo, pieza por pieza.
+- **Avisos**: si un diseño no cierra (cajones que no entran, puertas demasiado angostas) te lo dice con el motivo.
+- **Exportar CSV** del despiece, listo para planilla o para el aserradero.
+- **Exportar / importar diseño** en JSON.
+- **Guardado local**: proyectos en `localStorage`, sin cuentas ni servidores.
+- **5 plantillas** para arrancar (alacena, cómoda, placard, bajo mesada, biblioteca).
 
-const resultado = compileFurniture({
-  columns: [
-    {
-      width: 0.6,
-      modules: [{ id: "puertas", type: "doors", height: 0.8 }],
-    },
-  ],
-});
-
-console.log(resultado.parts.length);      // 7 piezas
-console.log(resultado.operations.length); // 6 mecanizados
-console.log(buildCutlist(resultado.parts)); // lista agrupada
-console.log(cutlistToCsv(buildCutlist(resultado.parts)));
-```
+| Cómoda de 4 cajones | Mecanizados |
+|---|---|
+| ![Cómoda de 4 cajones](docs/img/editor-comoda.png) | ![Tabla de mecanizados](docs/img/editor-mecanizados.png) |
 
 ## Modelo de diseño
 
@@ -79,38 +62,63 @@ Medidas en **metros**. Un diseño es:
 
 Tipos de módulo: `doors` (par de puertas), `left-door` / `right-door` (una hoja con bisagra), `drawer` (pila de cajones), `shelf` (estante abierto).
 
+## Como librería
+
+```js
+import { compileFurniture, buildCutlist, cutlistToCsv } from "./src/index.js";
+
+const resultado = compileFurniture({
+  columns: [{ width: 0.6, modules: [{ id: "puertas", type: "doors", height: 0.8 }] }],
+});
+
+resultado.parts.length;      // 7 piezas
+resultado.operations.length; // 6 mecanizados
+buildCutlist(resultado.parts); // lista agrupada
+cutlistToCsv(buildCutlist(resultado.parts));
+```
+
 ## Estructura
 
 ```
+index.html          app web (sin build)
+styles.css
 src/
-  engine/
-    config.js     configuración de fabricación y precisión (1 mm)
-    compile.js    motor: diseño → piezas, mecanizados, avisos
-    cutlist.js    agrupado de piezas, resumen y CSV
-  index.js        API pública
-templates/        plantillas de muebles propias
-test/             tests del motor y del despiece (+ snapshots)
-dev/              herramientas de desarrollo (comparación, snapshots)
-docs/             documentación técnica
+  engine/           motor de despiece (independiente de la UI)
+    config.js       parámetros de fabricación y precisión (1 mm)
+    compile.js      diseño → piezas, mecanizados, avisos
+    cutlist.js      agrupado, resumen y CSV
+  ui/               editor (sin frameworks)
+    app.js          lógica y eventos
+    render2d.js     diagrama del mueble
+    storage.js      proyectos en localStorage
+    dom.js          helpers
+  index.js          API pública
+templates/          plantillas propias
+test/               tests del motor y del despiece (+ snapshots)
+dev/                herramientas de desarrollo (servidor, pruebas de UI, snapshots)
+docs/               documentación técnica
 ```
+
+El motor no depende del navegador: se usa igual en Node o en la web.
 
 ## Tests
 
 ```bash
-npm test
+npm test          # 57 tests del motor, despiece y plantillas
+npm run ui-check  # 12 verificaciones de la interfaz con Chrome
 ```
 
-34 tests que cubren medidas calculadas a mano, snapshots de la salida, validaciones y exportación. El motor además fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
+El motor fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
 
 ## Roadmap
 
 | Versión | Contenido | Estado |
 |---|---|---|
 | v0.1 | Motor de despiece + despiece agrupado + CSV + tests | ✅ |
-| v0.2 | Editor visual (2D) con plantillas, guardado local e import/export | 🚧 |
-| v0.3 | Visor 3D interactivo | ⏳ |
-| v0.4 | Publicación en GitHub Pages + PWA offline | ⏳ |
-| v1.0 | Materiales y espesores por proyecto, PDF de planos, optimización de corte | ⏳ |
+| v0.2 | Editor visual, plantillas, guardado local, import/export, publicación web | ✅ |
+| v0.3 | Visor 3D interactivo | 🚧 |
+| v0.4 | Materiales y espesores por proyecto, optimización de corte, PDF de planos | ⏳ |
+| v1.0 | PWA offline, historial de cambios, más tipos de mueble | ⏳ |
 
 ## Origen
 

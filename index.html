@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Despiece — diseñá muebles y obtené la lista de corte</title>
+    <meta
+      name="description"
+      content="Diseñá muebles y obtené el despiece exacto de piezas para cortar. Libre, gratuito y sin cuentas: todo se calcula en tu navegador."
+    />
+    <meta name="color-scheme" content="dark" />
+    <link rel="stylesheet" href="./styles.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f59e0b'/%3E%3Crect x='8' y='7' width='7' height='18' rx='1' fill='%231c1917'/%3E%3Crect x='17' y='7' width='7' height='11' rx='1' fill='%231c1917'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-text">
+          <h1>Despiece</h1>
+          <p>diseñá muebles · obtené la lista de corte</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <label class="project-name">
+          <span class="sr-only">Nombre del proyecto</span>
+          <input id="nombre-proyecto" type="text" placeholder="Nombre del proyecto" autocomplete="off" maxlength="80" />
+        </label>
+        <button id="btn-guardar" class="btn" type="button" title="Guardar en este navegador">Guardar</button>
+        <button id="btn-csv" class="btn btn-primary" type="button" title="Descargar la lista de corte">Exportar CSV</button>
+        <div class="menu">
+          <button id="btn-menu" class="btn btn-icon" type="button" aria-haspopup="true" aria-expanded="false" title="Más acciones">⋯</button>
+          <div id="menu-panel" class="menu-panel" hidden>
+            <button data-accion="json" type="button">Exportar diseño (JSON)</button>
+            <button data-accion="importar" type="button">Importar diseño…</button>
+            <hr />
+            <button data-accion="borrar-proyecto" type="button" class="danger">Borrar proyecto actual</button>
+          </div>
+        </div>
+        <input id="archivo-importar" type="file" accept=".json,application/json" hidden />
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="sidebar-section">
+          <h2>Plantillas</h2>
+          <div id="lista-plantillas" class="chip-list"></div>
+        </section>
+
+        <section class="sidebar-section">
+          <h2>Mis proyectos</h2>
+          <div id="lista-proyectos" class="project-list"></div>
+        </section>
+
+        <p class="sidebar-note">
+          Todo se guarda en este navegador. Nada se sube a internet.
+        </p>
+      </aside>
+
+      <section class="design-panel">
+        <div class="panel-card canvas-card">
+          <div class="panel-head">
+            <h2>Vista</h2>
+            <span id="medidas-exteriores" class="muted"></span>
+          </div>
+          <div id="diagrama" class="diagram"></div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2>Módulos</h2>
+            <button id="btn-agregar-columna" class="btn btn-small" type="button">+ columna</button>
+          </div>
+          <div id="controles" class="controls"></div>
+        </div>
+
+        <details class="panel-card config-card">
+          <summary>Materiales y luces</summary>
+          <div id="config" class="config-grid"></div>
+        </details>
+      </section>
+
+      <section class="output-panel">
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2>Resumen</h2>
+          </div>
+          <div id="resumen" class="kpis"></div>
+        </div>
+
+        <div class="panel-card output-card">
+          <div class="panel-head">
+            <div class="tabs" role="tablist">
+              <button class="tab is-active" data-vista="despiece" type="button" role="tab">Despiece</button>
+              <button class="tab" data-vista="mecanizados" type="button" role="tab">Mecanizados</button>
+            </div>
+          </div>
+          <div id="avisos" class="avisos"></div>
+          <p id="nota-tabla" class="tabla-nota"></p>
+          <div id="tabla" class="table-wrap"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        <strong>Despiece</strong> · código abierto (MIT) ·
+        <a href="https://github.com/juliMAB/despiece">github.com/juliMAB/despiece</a>
+      </p>
+      <p id="estado-guardado" class="muted" aria-live="polite"></p>
+    </footer>
+
+    <script type="module" src="./src/ui/app.js"></script>
+  </body>
+</html>
