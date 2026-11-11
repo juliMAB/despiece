@@ -26,6 +26,7 @@ import { TEMPLATES } from "../../templates/index.js";
 import { el, mount, metros, milimetros } from "./dom.js";
 import { renderDiagram } from "./render2d.js";
 import { crearVisor3D } from "./render3d.js";
+import { proyectarPunto } from "./geometry3d.js";
 import * as storage from "./storage.js";
 
 /* ── tipos de módulo ─────────────────────────────────────────────────────── */
@@ -63,7 +64,7 @@ const state = {
   resultado: null, // salida del motor
   vista: "despiece", // despiece | mecanizados
   vista3d: storage.leerVista3d(), // true = 3D, false = 2D
-  abierto: false, // puertas y cajones abiertos en el 3D
+  medidas: "hover", // hover | todas | sin
 };
 
 const $ = (id) => document.getElementById(id);
@@ -75,6 +76,9 @@ const refs = {
   diagrama: $("diagrama"),
   lienzo2d: document.querySelector("#diagrama .diagram-2d"),
   canvas3d: document.querySelector("#diagrama .diagram-3d"),
+  capaMedidas: $("capa-medidas"),
+  tooltip: $("tooltip-pieza"),
+  selMedidas: $("sel-medidas"),
   chkFrentes: $("chk-frentes"),
   btnAbrir: $("btn-abrir"),
   btnPantalla: $("btn-pantalla"),
@@ -303,9 +307,141 @@ let visor3d = null;
 /** Crea el visor la primera vez que se necesita. */
 function asegurarVisor() {
   if (!visor3d) {
-    visor3d = crearVisor3D(refs.canvas3d, { mostrarFrentes: refs.chkFrentes.checked });
+    visor3d = crearVisor3D(refs.canvas3d, {
+      mostrarFrentes: refs.chkFrentes.checked,
+      alDibujar: (vista) => {
+        renderMedidas(vista);
+        sincronizarBotonAbrir();
+      },
+    });
   }
   return visor3d;
+}
+
+/* ── medidas sobre el modelo ─────────────────────────────────────────────── */
+
+/** Medidas de corte de una pieza, en milímetros. */
+function dimensionesPieza(parte) {
+  const mm = (metros) => Math.round(metros * 1000 * 10) / 10;
+  return `${mm(parte.size.width)} × ${mm(parte.size.height)} × ${mm(parte.size.thickness)} mm`;
+}
+
+/** Dibuja las cotas generales y/o las etiquetas de cada pieza. */
+function renderMedidas(vista) {
+  if (!vista || state.medidas === "sin") {
+    refs.capaMedidas.replaceChildren();
+    return;
+  }
+
+  const capa = refs.capaMedidas;
+  const nodos = [];
+  const crearCota = (contenido, x, y, esPieza) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const nodo = el("div", {
+      class: "cota" + (esPieza ? " cota--pieza" : ""),
+      style: `left:${x}px; top:${y}px`,
+    });
+    if (typeof contenido === "string") nodo.textContent = contenido;
+    else nodo.append(...contenido);
+    return nodo;
+  };
+
+  // cotas generales: usan las medidas del motor (no los extremos de las piezas)
+  const medidas = state.resultado?.bounds ?? {
+    width: vista.max.x - vista.min.x,
+    height: vista.max.y - vista.min.y,
+    depth: vista.max.z - vista.min.z,
+  };
+  const centro = {
+    x: (vista.min.x + vista.max.x) / 2,
+    y: (vista.min.y + vista.max.y) / 2,
+    z: (vista.min.z + vista.max.z) / 2,
+  };
+  const margenLateral = Math.max(0.06, (vista.max.x - vista.min.x) * 0.14);
+  const ancho = proyectarPunto({ x: centro.x, y: 0, z: vista.max.z }, vista.camara);
+  const alto = proyectarPunto(
+    { x: vista.min.x - margenLateral, y: centro.y, z: vista.max.z },
+    vista.camara,
+  );
+  const fondo = proyectarPunto({ x: vista.max.x, y: 0, z: centro.z }, vista.camara);
+
+  nodos.push(
+    crearCota(`ancho ${metros(medidas.width)} m`, ancho?.x, (ancho?.y ?? 0) + 18, false),
+    crearCota(`alto ${metros(medidas.height)} m`, alto?.x, alto?.y, false),
+    crearCota(`fondo ${metros(medidas.depth)} m`, (fondo?.x ?? 0) + 42, (fondo?.y ?? 0) + 10, false),
+  );
+
+  // medidas de cada pieza (se acomodan para no superponerse)
+  if (state.medidas === "todas") {
+    const entradas = [];
+    for (const pieza of vista.piezas) {
+      const p = proyectarPunto(pieza.caja.center, vista.camara);
+      if (!p) continue;
+      const etiqueta = ROLE_LABELS[pieza.parte.role] ?? pieza.parte.role;
+      entradas.push({
+        x: p.x,
+        y: p.y,
+        etiqueta,
+        detalle: dimensionesPieza(pieza.parte),
+        texto: etiqueta + dimensionesPieza(pieza.parte),
+      });
+    }
+
+    const anchoEtiqueta = (texto) => Math.max(80, texto.length * 5.8 + 18);
+    const colocadas = [];
+    for (const entrada of entradas.sort((a, b) => a.y - b.y)) {
+      for (let intento = 0; intento < 12; intento++) {
+        const choque = colocadas.some(
+          (otra) =>
+            Math.abs(otra.x - entrada.x) < (otra.ancho + anchoEtiqueta(entrada.texto)) / 2 + 4 &&
+            Math.abs(otra.y - entrada.y) < 30,
+        );
+        if (!choque) break;
+        entrada.y += 30;
+      }
+      colocadas.push({ x: entrada.x, y: entrada.y, ancho: anchoEtiqueta(entrada.texto) });
+      nodos.push(
+        crearCota(
+          [el("b", { text: entrada.etiqueta }), el("br"), document.createTextNode(entrada.detalle)],
+          entrada.x,
+          entrada.y,
+          true,
+        ),
+      );
+    }
+  }
+
+  capa.replaceChildren(...nodos.filter(Boolean));
+}
+
+/** Muestra el cartelito con las medidas de la pieza bajo el mouse. */
+function mostrarTooltip(parte, x, y) {
+  if (state.medidas === "sin") {
+    ocultarTooltip();
+    return;
+  }
+  refs.tooltip.replaceChildren(
+    el("b", { text: ROLE_LABELS[parte.role] ?? parte.role }),
+    el("br"),
+    document.createTextNode(dimensionesPieza(parte)),
+  );
+  refs.tooltip.style.left = `${x}px`;
+  refs.tooltip.style.top = `${y}px`;
+  refs.tooltip.hidden = false;
+}
+
+function ocultarTooltip() {
+  refs.tooltip.hidden = true;
+}
+
+/** Mantiene el botón Abrir/Cerrar en sincronía con lo que está abierto. */
+let abiertosPrevios = 0;
+function sincronizarBotonAbrir() {
+  const abiertos = Number(refs.canvas3d.dataset.abiertos ?? 0);
+  if (abiertos === abiertosPrevios) return;
+  abiertosPrevios = abiertos;
+  refs.btnAbrir.textContent = abiertos > 0 ? "Cerrar" : "Abrir";
+  refs.btnAbrir.setAttribute("aria-pressed", String(abiertos > 0));
 }
 
 /** Aplica el modo de vista (3D o 2D) a la interfaz. */
@@ -326,10 +462,8 @@ const tarjetaVista = refs.diagrama.closest(".canvas-card");
 
 /** Abre o cierra puertas y cajones con animación. */
 function alternarApertura(abrir) {
-  const valor = abrir ?? !state.abierto;
-  state.abierto = valor;
-  refs.btnAbrir.setAttribute("aria-pressed", String(valor));
-  refs.btnAbrir.textContent = valor ? "Cerrar" : "Abrir";
+  const hayAbiertos = Number(refs.canvas3d.dataset.abiertos ?? 0) > 0;
+  const valor = abrir ?? !hayAbiertos;
   asegurarVisor().setApertura(valor ? 1 : 0);
 }
 
@@ -779,6 +913,38 @@ function conectarEventos() {
   });
 
   refs.btnAbrir.addEventListener("click", () => alternarApertura());
+
+  // medidas: selector y hover sobre el 3D
+  refs.selMedidas.addEventListener("change", (evento) => {
+    state.medidas = evento.target.value;
+    if (state.medidas === "sin") {
+      ocultarTooltip();
+      asegurarVisor().setResaltada(null);
+    }
+    renderMedidas(asegurarVisor().vista);
+  });
+
+  refs.canvas3d.addEventListener("pointermove", (evento) => {
+    if (!state.vista3d || state.medidas === "sin") return;
+    const visor = asegurarVisor();
+    if (visor.estado.arrastrando) return;
+    const caja = refs.canvas3d.getBoundingClientRect();
+    const x = evento.clientX - caja.left;
+    const y = evento.clientY - caja.top;
+    const elegida = visor.piezaEnPixel(x, y);
+    if (!elegida) {
+      visor.setResaltada(null);
+      ocultarTooltip();
+      return;
+    }
+    visor.setResaltada(elegida.parte.key);
+    mostrarTooltip(elegida.parte, x, y);
+  });
+
+  refs.canvas3d.addEventListener("pointerleave", () => {
+    asegurarVisor().setResaltada(null);
+    ocultarTooltip();
+  });
 
   refs.btnPantalla.addEventListener("click", () => pantallaCompleta());
 

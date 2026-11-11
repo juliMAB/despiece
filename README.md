@@ -2,7 +2,7 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.3.2 — editor web + visor 3D animado**.
+> Estado: **v0.4 — editor web + visor 3D interactivo con medidas**.
 > Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
@@ -22,7 +22,8 @@ Abrís `http://127.0.0.1:8080`, elegís una plantilla y empezás a editar. Todo 
 ## Qué hace
 
 - **Visor 3D interactivo**: el mueble se ve armado en 3D, con **WebGL 2 y z-buffer real** (las piezas se ocluyen bien desde cualquier ángulo). Arrastrás para rotar, rueda para zoom, doble click para volver a la vista inicial. Cada tipo de pieza tiene su color: laterales azules, estantes verdes, frentes ámbar, fondos grises. Se puede ocultar puertas y frentes, alternar con la vista 2D y verlo **a pantalla completa**.
-- **Abrir puertas y cajones**: con una animación, las puertas giran sobre su bisagra y los cajones se deslizan hacia afuera para revisar el interior y las cajas.
+- **Abrir puertas y cajones**: con una animación, las puertas giran sobre su bisagra y los cajones se deslizan hacia afuera. Hay un botón para abrir todo y **cada puerta o cajón se abre solo con un click**.
+- **Medidas sobre el modelo**: cotas de ancho, alto y fondo, y la opción de mostrar las medidas de cada pieza (`al pasar el mouse` / `todas las piezas` / `ocultas`). Al pasar el mouse se resalta la pieza y aparece su medida de corte.
 - **Editor visual**: agregá y quitá columnas, cambiá anchos, agregá módulos de puertas (par o simple), cajones o estantes, con su alto y cantidad de cajones.
 - **Despiece en vivo**: cada cambio recalcula todas las piezas con sus medidas exactas de corte.
 - **Resumen**: medidas exteriores, cantidad de piezas, líneas de corte, mecanizados y superficie de panel.
@@ -44,6 +45,10 @@ Abrís `http://127.0.0.1:8080`, elegís una plantilla y empezás a editar. Todo 
 | Puertas abiertas | Cajones abiertos |
 |---|---|
 | ![Puertas abiertas](docs/img/editor-3d-abierto.png) | ![Cajones abiertos](docs/img/editor-cajones-abiertos.png) |
+
+| Medidas al pasar el mouse | Medidas de todas las piezas |
+|---|---|
+| ![Medidas al pasar el mouse](docs/img/editor-3d-medidas.png) | ![Medidas de todas las piezas](docs/img/editor-3d-todas.png) |
 
 ![Tabla de mecanizados](docs/img/editor-mecanizados.png)
 
@@ -117,8 +122,8 @@ El motor y la geometría 3D no dependen del navegador: se usan igual en Node o e
 ## Tests
 
 ```bash
-npm test          # 85 tests: motor, despiece, plantillas, geometría, matrices y animación 3D
-npm run ui-check  # 25 verificaciones de la interfaz con Chrome (incluye visor 3D WebGL y apertura)
+npm test          # 85 tests: motor, despiece, plantillas, geometría, matrices, animación y picking
+npm run ui-check  # 30 verificaciones de la interfaz con Chrome (visor 3D, apertura y medidas)
 ```
 
 El motor fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
@@ -132,6 +137,7 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.3 | Visor 3D interactivo (rotar, zoom, ocultar frentes, 2D/3D) | ✅ |
 | v0.3.1 | Visor sobre WebGL 2 con z-buffer real, paleta por tipo de pieza y pantalla completa | ✅ |
 | v0.3.2 | Abrir puertas y cajones con animación | ✅ |
+| v0.4 | Abrir cada puerta/cajón con un click y medidas sobre el modelo (cotas y hover) | ✅ |
 | v0.4 | Materiales y costos por proyecto, optimización de corte | 🚧 |
 | v0.5 | PDF de planos y PWA offline | ⏳ |
 | v1.0 | Historial de cambios, más tipos de mueble, exportación a CNC | ⏳ |

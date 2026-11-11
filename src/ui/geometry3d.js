@@ -268,6 +268,22 @@ export function transformarPunto(m, p) {
 
 /* ── transformaciones para animaciones ───────────────────────────────────── */
 
+const ROLES_CAJON = new Set(["drawer-front", "drawer-side", "drawer-back", "drawer-bottom"]);
+
+/**
+ * Identifica el grupo de apertura de una pieza:
+ *   - cada hoja de puerta abre sola → "door:<key>"
+ *   - todas las piezas de un cajón abren juntas → "drawer:<moduleId>:<index>"
+ * Devuelve null si la pieza no se abre (laterales, estantes, fondos).
+ */
+export function grupoDeApertura(parte) {
+  if (parte.role === "door-front") return `door:${parte.key}`;
+  if (ROLES_CAJON.has(parte.role)) {
+    return `drawer:${parte.sourceModuleId}:${parte.drawerIndex}`;
+  }
+  return null;
+}
+
 /**
  * Rota un punto alrededor de un eje vertical (Y) que pasa por `pivote`.
  * Ángulo positivo gira de +X hacia -Z (regla de la mano derecha).
@@ -304,30 +320,32 @@ export function trasladarPunto(p, delta) {
  * Calcula las transformaciones de las piezas para una apertura dada.
  *
  * @param {Array} partes - piezas del motor
- * @param {number} apertura - 0 (cerrado) a 1 (abierto)
+ * @param {number|((parte: object) => number)} apertura - 0 (cerrado) a 1 (abierto),
+ *   o una función que devuelve la apertura de cada pieza.
  * @returns {Map<string, {tipo: "giro", angulo: number, pivote: object} | {tipo: "traslacion", delta: object}>}
  */
 export function transformacionesDeApertura(partes, apertura) {
   const transformaciones = new Map();
-  if (!(apertura > 0)) return transformaciones;
-
-  const ROLES_CAJON = new Set(["drawer-front", "drawer-side", "drawer-back", "drawer-bottom"]);
+  const aperturaDe = typeof apertura === "function" ? apertura : () => apertura;
 
   // Cuánto avanza cada cajón: se deduce de la profundidad de sus laterales.
   const avancePorCajon = new Map();
   for (const parte of partes) {
     if (parte.role !== "drawer-side") continue;
-    const grupo = `${parte.sourceModuleId}:${parte.drawerIndex}`;
+    const grupo = grupoDeApertura(parte);
     if (!avancePorCajon.has(grupo)) {
       avancePorCajon.set(grupo, Math.max(0.15, parte.size.width * 0.85));
     }
   }
 
   for (const parte of partes) {
+    const valor = Math.max(0, Math.min(1, Number(aperturaDe(parte)) || 0));
+    if (valor <= 0) continue;
+
     if (parte.role === "door-front" && parte.doorHinge) {
       // La bisagra abierta gira hacia afuera: -90° si es a la izquierda, +90° a la derecha.
       const signo = parte.doorHinge === "left" ? -1 : 1;
-      const angulo = signo * (Math.PI / 2) * apertura;
+      const angulo = signo * (Math.PI / 2) * valor;
       const pivote = {
         x: parte.position.x + (parte.doorHinge === "left" ? -parte.size.width / 2 : parte.size.width / 2),
         y: parte.position.y,
@@ -335,11 +353,108 @@ export function transformacionesDeApertura(partes, apertura) {
       };
       transformaciones.set(parte.key, { tipo: "giro", angulo, pivote });
     } else if (ROLES_CAJON.has(parte.role)) {
-      const grupo = `${parte.sourceModuleId}:${parte.drawerIndex}`;
-      const avance = (avancePorCajon.get(grupo) ?? 0.3) * apertura;
+      const avance = (avancePorCajon.get(grupoDeApertura(parte)) ?? 0.3) * valor;
       transformaciones.set(parte.key, { tipo: "traslacion", delta: { x: 0, y: 0, z: avance } });
     }
   }
 
   return transformaciones;
+}
+
+/* ── selección con el mouse (rayo contra piezas) ─────────────────────────── */
+
+/**
+ * Construye un rayo desde la cámara pasando por un pixel de la pantalla.
+ *
+ * @param {number} px - coordenada X en píxeles CSS (0 = borde izquierdo)
+ * @param {number} py - coordenada Y en píxeles CSS (0 = borde superior)
+ * @param {number} ancho
+ * @param {number} alto
+ * @param {object} camara
+ * @param {number} fovDeg
+ */
+export function rayoDesdePixel(px, py, ancho, alto, camara, fovDeg = 38) {
+  const ndcX = (px / ancho) * 2 - 1;
+  const ndcY = 1 - (py / alto) * 2;
+  const tangente = Math.tan((fovDeg * Math.PI) / 360);
+  const aspecto = ancho / alto;
+  const direccion = normalizar({
+    x: camara.forward.x + camara.right.x * ndcX * tangente * aspecto + camara.up.x * ndcY * tangente,
+    y: camara.forward.y + camara.right.y * ndcX * tangente * aspecto + camara.up.y * ndcY * tangente,
+    z: camara.forward.z + camara.right.z * ndcX * tangente * aspecto + camara.up.z * ndcY * tangente,
+  });
+  return { origen: camara.eye, direccion };
+}
+
+/** Deshace la transformación de una pieza sobre un punto (para probar el rayo). */
+export function deshacerTransformacion(punto, transformacion) {
+  if (!transformacion) return punto;
+  if (transformacion.tipo === "giro") {
+    return rotarPuntoY(punto, -transformacion.angulo, transformacion.pivote);
+  }
+  return {
+    x: punto.x - transformacion.delta.x,
+    y: punto.y - transformacion.delta.y,
+    z: punto.z - transformacion.delta.z,
+  };
+}
+
+/** Deshace la transformación de una pieza sobre una dirección. */
+export function deshacerTransformacionDireccion(direccion, transformacion) {
+  if (!transformacion) return direccion;
+  if (transformacion.tipo === "giro") return rotarNormalY(direccion, -transformacion.angulo);
+  return direccion;
+}
+
+/**
+ * Intersección rayo–caja alineada a los ejes (método de las placas).
+ * Devuelve la distancia `t` o null si no hay intersección adelante.
+ */
+export function interseccionRayoCaja(origen, direccion, caja) {
+  let tMin = 0;
+  let tMax = Infinity;
+
+  for (const eje of ["x", "y", "z"]) {
+    const minimo = caja.center[eje] - caja.size[eje] / 2;
+    const maximo = caja.center[eje] + caja.size[eje] / 2;
+    const o = origen[eje];
+    const d = direccion[eje];
+
+    if (Math.abs(d) < 1e-9) {
+      if (o < minimo || o > maximo) return null;
+      continue;
+    }
+
+    let t1 = (minimo - o) / d;
+    let t2 = (maximo - o) / d;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    tMin = Math.max(tMin, t1);
+    tMax = Math.min(tMax, t2);
+    if (tMin > tMax) return null;
+  }
+
+  return tMin > 0 ? tMin : null;
+}
+
+/**
+ * Devuelve la pieza más cercana que toca el rayo.
+ *
+ * @param {object} rayo - {origen, direccion}
+ * @param {Array<{clave: string, caja: object, transformacion: object|null, parte: object}>} piezas
+ * @returns {{clave: string, parte: object, distancia: number}|null}
+ */
+export function piezaEnRayo(rayo, piezas) {
+  let mejor = null;
+
+  for (const pieza of piezas) {
+    const origen = deshacerTransformacion(rayo.origen, pieza.transformacion);
+    const direccion = deshacerTransformacionDireccion(rayo.direccion, pieza.transformacion);
+    const distancia = interseccionRayoCaja(origen, direccion, pieza.caja);
+    if (distancia === null) continue;
+    if (!mejor || distancia < mejor.distancia) {
+      mejor = { clave: pieza.clave, parte: pieza.parte, distancia };
+    }
+  }
+
+  return mejor;
 }

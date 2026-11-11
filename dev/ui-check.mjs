@@ -229,6 +229,85 @@ async function main() {
     `apertura: ${aperturaCerrada}`,
   );
 
+  /* ── click individual y medidas ───────────────────────────────────────── */
+
+  const abrirPorClick = async () => {
+    const puntos = [[0.5, 0.5], [0.42, 0.5], [0.58, 0.5], [0.5, 0.62], [0.46, 0.45], [0.54, 0.55]];
+    for (const [fx, fy] of puntos) {
+      await evaluate(`
+        (() => {
+          const canvas = document.querySelector('.diagram-3d');
+          const caja = canvas.getBoundingClientRect();
+          const x = caja.left + caja.width * ${fx};
+          const y = caja.top + caja.height * ${fy};
+          canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: x, clientY: y, bubbles: true, pointerId: 3 }));
+          canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: x, clientY: y, bubbles: true, pointerId: 3 }));
+          return true;
+        })()
+      `);
+      await sleep(750);
+      const abiertos = await evaluate(`Number(document.querySelector('.diagram-3d').dataset.abiertos ?? 0)`);
+      if (abiertos > 0) return true;
+    }
+    return false;
+  };
+
+  check("click en una puerta la abre sola", await abrirPorClick());
+  await shot("ui-1g-click.png");
+
+  await evaluate(`document.querySelector('#btn-abrir').click()`);
+  await sleep(900);
+
+  // hover: medidas de la pieza + cotas generales
+  await evaluate(`
+    (() => {
+      const canvas = document.querySelector('.diagram-3d');
+      const caja = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointermove', {
+        clientX: caja.left + caja.width / 2,
+        clientY: caja.top + caja.height / 2,
+        bubbles: true,
+        pointerId: 4,
+      }));
+      return true;
+    })()
+  `);
+  await sleep(350);
+  const tooltipVisible = await evaluate(
+    `(() => { const t = document.querySelector('#tooltip-pieza'); return !t.hidden && /mm/.test(t.textContent); })()`,
+  );
+  check("el hover muestra las medidas de la pieza", tooltipVisible === true);
+  const cotasGenerales = await evaluate(
+    `document.querySelectorAll('#capa-medidas .cota:not(.cota--pieza)').length`,
+  );
+  check("hay cotas generales sobre el modelo", cotasGenerales >= 3, `${cotasGenerales} cotas`);
+  await shot("ui-1h-medidas.png");
+
+  const cambiarMedidas = async (valor) =>
+    evaluate(`
+      (() => {
+        const select = document.querySelector('#sel-medidas');
+        select.value = ${JSON.stringify(valor)};
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()
+    `);
+
+  await cambiarMedidas("todas");
+  await sleep(450);
+  const cotasPiezas = await evaluate(`document.querySelectorAll('#capa-medidas .cota--pieza').length`);
+  check("el modo 'todas' etiqueta cada pieza", cotasPiezas > 3, `${cotasPiezas} etiquetas`);
+  await shot("ui-1i-todas.png");
+
+  await cambiarMedidas("sin");
+  await sleep(350);
+  check(
+    "el modo 'ocultas' limpia las medidas",
+    (await evaluate(`document.querySelectorAll('#capa-medidas .cota').length`)) === 0,
+  );
+  await cambiarMedidas("hover");
+  await sleep(300);
+
   // pantalla completa
   await evaluate(`document.querySelector('#btn-pantalla').click()`);
   await sleep(500);

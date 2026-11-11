@@ -2,14 +2,15 @@
  * Visor 3D del mueble.
  *
  * Usa **WebGL 2 con z-buffer real** (depth test), así las piezas se ocluyen
- * correctamente desde cualquier ángulo: no hay artefactos de ordenamiento.
- * Si el navegador no tiene WebGL 2, cae a un renderer 2D por software (más
- * lento y con ordenamiento aproximado) para que la app siga funcionando.
+ * correctamente desde cualquier ángulo. Si el navegador no tiene WebGL 2, cae
+ * a un renderer 2D por software para que la app siga funcionando.
  *
  * Interacción:
  *   - arrastrar: rotar
  *   - rueda: zoom
  *   - doble click: volver a la vista inicial
+ *   - click en una puerta o cajón: abrirlo / cerrarlo
+ *   - pasar el mouse: identifica la pieza (para mostrar sus medidas)
  */
 
 import {
@@ -21,9 +22,7 @@ import {
   CARAS,
   verticeDeCaja,
   centroDeCara,
-  caraVisible,
   intensidadSombra,
-  colorSombreado,
   hexARgb,
   punto,
   restar,
@@ -31,9 +30,12 @@ import {
   matrizPerspectiva,
   multiplicarMatrices,
   transformacionesDeApertura,
+  grupoDeApertura,
   rotarPuntoY,
   rotarNormalY,
   trasladarPunto,
+  rayoDesdePixel,
+  piezaEnRayo,
   LUZ,
 } from "./geometry3d.js";
 
@@ -53,48 +55,23 @@ export const PALETA_3D = Object.freeze({
 const ROLES_FRENTE = new Set(["door-front", "drawer-front"]);
 const FOV = 38;
 const VISTA_INICIAL = Object.freeze({ yaw: 0.62, pitch: 0.42, zoom: 1 });
+const VELOCIDAD_ANIMACION = 90; // ms; menor = más rápido
 
 const parteVisible = (parte, mostrarFrentes) =>
   mostrarFrentes || !ROLES_FRENTE.has(parte.role);
 
-/** Cajas a dibujar, según si se muestran los frentes o no. */
-function cajasVisibles(estado) {
-  return estado.partes
-    .filter((parte) => parteVisible(parte, estado.mostrarFrentes))
-    .map(partToBox);
-}
-
-/**
- * Piezas con su transformación de apertura (puertas que giran, cajones que
- * avanzan). Se usa para construir la geometría que se dibuja.
- */
-function piezasParaDibujar(estado) {
+/** Cámara y piezas para el estado actual. */
+function calcularVista(estado, ancho, alto, aperturaDeParte) {
   const partes = estado.partes.filter((parte) => parteVisible(parte, estado.mostrarFrentes));
-  const transformaciones = transformacionesDeApertura(partes, estado.apertura);
-  return partes.map((parte) => ({
+  const transformaciones = transformacionesDeApertura(partes, aperturaDeParte);
+  const piezas = partes.map((parte) => ({
+    clave: parte.key,
+    parte,
     caja: partToBox(parte),
     transformacion: transformaciones.get(parte.key) ?? null,
   }));
-}
 
-/** Aplica una transformación a un vértice de la caja. */
-function transformarVertice(vertice, transformacion) {
-  if (!transformacion) return vertice;
-  if (transformacion.tipo === "giro") {
-    return rotarPuntoY(vertice, transformacion.angulo, transformacion.pivote);
-  }
-  return trasladarPunto(vertice, transformacion.delta);
-}
-
-/** Aplica una transformación a una normal. */
-function transformarNormal(normal, transformacion) {
-  if (!transformacion) return normal;
-  if (transformacion.tipo === "giro") return rotarNormalY(normal, transformacion.angulo);
-  return normal;
-}
-
-/** Datos de cámara para el estado actual. */
-function cámaraActual(estado, cajas, ancho, alto) {
+  const cajas = piezas.map((pieza) => pieza.caja);
   const { min, max } = boxesBounds(cajas);
   const target = {
     x: (min.x + max.x) / 2,
@@ -110,7 +87,33 @@ function cámaraActual(estado, cajas, ancho, alto) {
     viewport: { width: ancho, height: alto },
     fovDeg: FOV,
   });
-  return { camara, target, radio, min, max };
+
+  return { piezas, cajas, camara, min, max, radio, ancho, alto, resaltada: estado.resaltada };
+}
+
+/** Color RGB (0..1) de una pieza, aclarado si está resaltada. */
+function colorRgb(caja, resaltada) {
+  const base = hexARgb(PALETA_3D[caja.role] ?? PALETA_3D.group);
+  const esResaltada = resaltada && caja.key === resaltada;
+  const factor = esResaltada ? 0.45 : 0;
+  const mezclar = (valor) => (valor + (255 - valor) * factor) / 255;
+  return [mezclar(base.r), mezclar(base.g), mezclar(base.b)];
+}
+
+/** Aplica una transformación a un vértice. */
+function transformarVertice(vertice, transformacion) {
+  if (!transformacion) return vertice;
+  if (transformacion.tipo === "giro") {
+    return rotarPuntoY(vertice, transformacion.angulo, transformacion.pivote);
+  }
+  return trasladarPunto(vertice, transformacion.delta);
+}
+
+/** Aplica una transformación a una normal. */
+function transformarNormal(normal, transformacion) {
+  if (!transformacion) return normal;
+  if (transformacion.tipo === "giro") return rotarNormalY(normal, transformacion.angulo);
+  return normal;
 }
 
 /* ── backend WebGL 2 (z-buffer real) ─────────────────────────────────────── */
@@ -194,9 +197,7 @@ function crearBackendWebGL(canvas, gl) {
     mvp: gl.getUniformLocation(programaLleno, "uMVP"),
     luz: gl.getUniformLocation(programaLleno, "uLuz"),
   };
-  const atributosLineas = {
-    posicion: gl.getAttribLocation(programaLineas, "aPosicion"),
-  };
+  const atributosLineas = { posicion: gl.getAttribLocation(programaLineas, "aPosicion") };
   const uniformesLineas = {
     mvp: gl.getUniformLocation(programaLineas, "uMVP"),
     color: gl.getUniformLocation(programaLineas, "uColor"),
@@ -206,19 +207,36 @@ function crearBackendWebGL(canvas, gl) {
   const bufferNormales = gl.createBuffer();
   const bufferColores = gl.createBuffer();
   const bufferLineas = gl.createBuffer();
-  let cantidadVertices = 0;
-  let cantidadLineas = 0;
-  let sucio = true;
 
-  function reconstruir(estado) {
-    const piezas = piezasParaDibujar(estado);
+  function dibujar(vista) {
+    const dpr = window.devicePixelRatio || 1;
+    const anchoPx = Math.round(vista.ancho * dpr);
+    const altoPx = Math.round(vista.alto * dpr);
+    if (canvas.width !== anchoPx || canvas.height !== altoPx) {
+      canvas.width = anchoPx;
+      canvas.height = altoPx;
+    }
+    gl.viewport(0, 0, anchoPx, altoPx);
+    gl.clearColor(0, 0, 0, 0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const vistaMatriz = matrizVista(vista.camara);
+    const proyeccion = matrizPerspectiva({
+      fovDeg: FOV,
+      aspect: vista.ancho / vista.alto,
+      near: 0.005,
+      far: 100,
+    });
+    const mvp = multiplicarMatrices(proyeccion, vistaMatriz);
+
+    // Geometría
     const posiciones = [];
     const normales = [];
     const colores = [];
-
-    for (const { caja, transformacion } of piezas) {
-      const rgb = hexARgb(PALETA_3D[caja.role] ?? PALETA_3D.group);
-      const color = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+    for (const { caja, transformacion } of vista.piezas) {
+      const color = colorRgb(caja, vista.resaltada);
       for (const cara of CARAS) {
         const normal = transformarNormal(cara.normal, transformacion);
         const vertices = cara.vertices.map((relativo) =>
@@ -234,104 +252,52 @@ function crearBackendWebGL(canvas, gl) {
       }
     }
 
-    cantidadVertices = posiciones.length / 3;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferPosiciones);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(posiciones), gl.DYNAMIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferNormales);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normales), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferColores);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colores), gl.STATIC_DRAW);
+    if (posiciones.length > 0) {
+      gl.useProgram(programaLleno);
+      gl.uniformMatrix4fv(uniformesLleno.mvp, false, mvp);
+      gl.uniform3fv(uniformesLleno.luz, new Float32Array([LUZ.x, LUZ.y, LUZ.z]));
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferPosiciones);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(posiciones), gl.DYNAMIC_DRAW);
+      gl.enableVertexAttribArray(atributosLleno.posicion);
+      gl.vertexAttribPointer(atributosLleno.posicion, 3, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferNormales);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normales), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(atributosLleno.normal);
+      gl.vertexAttribPointer(atributosLleno.normal, 3, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferColores);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colores), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(atributosLleno.color);
+      gl.vertexAttribPointer(atributosLleno.color, 3, gl.FLOAT, false, 0, 0);
+
+      gl.drawArrays(gl.TRIANGLES, 0, posiciones.length / 3);
+    }
 
     // Grilla del piso
-    const { min, max } = boxesBounds(piezas.map((pieza) => pieza.caja));
-    const radio = Math.hypot(max.x - min.x, max.y - min.y, max.z - min.z) / 2 || 1;
-    const paso = radio > 1.2 ? 0.4 : 0.2;
+    const { min, max } = vista;
+    const paso = vista.radio > 1.2 ? 0.4 : 0.2;
     const desdeX = Math.floor(min.x / paso) * paso;
     const hastaX = Math.ceil(max.x / paso) * paso;
     const desdeZ = Math.floor(min.z / paso) * paso;
     const hastaZ = Math.ceil(max.z / paso) * paso;
     const lineas = [];
-    for (let x = desdeX; x <= hastaX + 1e-9; x += paso) {
-      lineas.push(x, 0, desdeZ, x, 0, hastaZ);
-    }
-    for (let z = desdeZ; z <= hastaZ + 1e-9; z += paso) {
-      lineas.push(desdeX, 0, z, hastaX, 0, z);
-    }
-    cantidadLineas = lineas.length / 3;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferLineas);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineas), gl.STATIC_DRAW);
+    for (let x = desdeX; x <= hastaX + 1e-9; x += paso) lineas.push(x, 0, desdeZ, x, 0, hastaZ);
+    for (let z = desdeZ; z <= hastaZ + 1e-9; z += paso) lineas.push(desdeX, 0, z, hastaX, 0, z);
 
-    sucio = false;
-  }
-
-  function dibujar(estado) {
-    const dpr = window.devicePixelRatio || 1;
-    const ancho = canvas.clientWidth || 640;
-    const alto = canvas.clientHeight || 360;
-    if (ancho === 0 || alto === 0) return;
-
-    const anchoPx = Math.round(ancho * dpr);
-    const altoPx = Math.round(alto * dpr);
-    if (canvas.width !== anchoPx || canvas.height !== altoPx) {
-      canvas.width = anchoPx;
-      canvas.height = altoPx;
-    }
-    gl.viewport(0, 0, anchoPx, altoPx);
-    canvas.dataset.apertura = estado.apertura.toFixed(2);
-    gl.clearColor(0, 0, 0, 0);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    const cajas = cajasVisibles(estado);
-    if (cajas.length === 0) return;
-    if (sucio) reconstruir(estado);
-
-    const { camara } = cámaraActual(estado, cajas, ancho, alto);
-    const vista = matrizVista(camara);
-    const proyeccion = matrizPerspectiva({
-      fovDeg: FOV,
-      aspect: ancho / alto,
-      near: 0.005,
-      far: 100,
-    });
-    const mvp = multiplicarMatrices(proyeccion, vista);
-
-    // Sólidos
-    gl.enable(gl.DEPTH_TEST);
-    gl.useProgram(programaLleno);
-    gl.uniformMatrix4fv(uniformesLleno.mvp, false, mvp);
-    gl.uniform3fv(uniformesLleno.luz, new Float32Array([LUZ.x, LUZ.y, LUZ.z]));
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferPosiciones);
-    gl.enableVertexAttribArray(atributosLleno.posicion);
-    gl.vertexAttribPointer(atributosLleno.posicion, 3, gl.FLOAT, false, 0, 0);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferNormales);
-    gl.enableVertexAttribArray(atributosLleno.normal);
-    gl.vertexAttribPointer(atributosLleno.normal, 3, gl.FLOAT, false, 0, 0);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferColores);
-    gl.enableVertexAttribArray(atributosLleno.color);
-    gl.vertexAttribPointer(atributosLleno.color, 3, gl.FLOAT, false, 0, 0);
-
-    gl.drawArrays(gl.TRIANGLES, 0, cantidadVertices);
-
-    // Grilla (con profundidad, para que el mueble la tape)
     gl.useProgram(programaLineas);
     gl.uniformMatrix4fv(uniformesLineas.mvp, false, mvp);
     gl.uniform4fv(uniformesLineas.color, new Float32Array([0.62, 0.6, 0.58, 0.22]));
     gl.bindBuffer(gl.ARRAY_BUFFER, bufferLineas);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineas), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(atributosLineas.posicion);
     gl.vertexAttribPointer(atributosLineas.posicion, 3, gl.FLOAT, false, 0, 0);
-    gl.drawArrays(gl.LINES, 0, cantidadLineas);
+    gl.drawArrays(gl.LINES, 0, lineas.length / 3);
   }
 
   return {
     dibujar,
-    marcarSucio() {
-      sucio = true;
-    },
     destruir() {
       gl.deleteBuffer(bufferPosiciones);
       gl.deleteBuffer(bufferNormales);
@@ -348,26 +314,8 @@ function crearBackendWebGL(canvas, gl) {
 function crearBackendCanvas2D(canvas) {
   const contexto = canvas.getContext("2d");
 
-  function dibujar(estado) {
-    const dpr = window.devicePixelRatio || 1;
-    const ancho = canvas.clientWidth || 640;
-    const alto = canvas.clientHeight || 360;
-    if (ancho === 0 || alto === 0) return;
-
-    canvas.width = Math.round(ancho * dpr);
-    canvas.height = Math.round(alto * dpr);
-    canvas.dataset.apertura = estado.apertura.toFixed(2);
-    contexto.setTransform(dpr, 0, 0, dpr, 0, 0);
-    contexto.clearRect(0, 0, ancho, alto);
-
-    const piezas = piezasParaDibujar(estado);
-    if (piezas.length === 0) return;
-
-    const cajas = piezas.map((pieza) => pieza.caja);
-    const { camara, min, max, radio } = cámaraActual(estado, cajas, ancho, alto);
-
-    // grilla
-    const paso = radio > 1.2 ? 0.4 : 0.2;
+  function dibujarPiso(vista, camara) {
+    const paso = vista.radio > 1.2 ? 0.4 : 0.2;
     contexto.strokeStyle = "rgba(168, 162, 158, 0.16)";
     contexto.lineWidth = 1;
     const trazar = (a, b) => {
@@ -379,28 +327,37 @@ function crearBackendCanvas2D(canvas) {
       contexto.lineTo(fin.x, fin.y);
       contexto.stroke();
     };
-    const desdeX = Math.floor(min.x / paso) * paso;
-    const hastaX = Math.ceil(max.x / paso) * paso;
-    const desdeZ = Math.floor(min.z / paso) * paso;
-    const hastaZ = Math.ceil(max.z / paso) * paso;
+    const desdeX = Math.floor(vista.min.x / paso) * paso;
+    const hastaX = Math.ceil(vista.max.x / paso) * paso;
+    const desdeZ = Math.floor(vista.min.z / paso) * paso;
+    const hastaZ = Math.ceil(vista.max.z / paso) * paso;
     for (let x = desdeX; x <= hastaX + 1e-9; x += paso) trazar({ x, y: 0, z: desdeZ }, { x, y: 0, z: hastaZ });
     for (let z = desdeZ; z <= hastaZ + 1e-9; z += paso) trazar({ x: desdeX, y: 0, z }, { x: hastaX, y: 0, z });
+  }
 
-    // caras ordenadas por profundidad (solo si no hay WebGL)
+  function dibujar(vista) {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(vista.ancho * dpr);
+    canvas.height = Math.round(vista.alto * dpr);
+    contexto.setTransform(dpr, 0, 0, dpr, 0, 0);
+    contexto.clearRect(0, 0, vista.ancho, vista.alto);
+
+    dibujarPiso(vista, vista.camara);
+
     const caras = [];
-    for (const { caja, transformacion } of piezas) {
-      const colorBase = PALETA_3D[caja.role] ?? PALETA_3D.group;
+    for (const { caja, transformacion } of vista.piezas) {
+      const [r, g, b] = colorRgb(caja, vista.resaltada);
       for (const cara of CARAS) {
         const normal = transformarNormal(cara.normal, transformacion);
         const centro = transformarVertice(centroDeCara(caja, cara.normal), transformacion);
-        if (punto(normal, restar(camara.eye, centro)) <= 0) continue;
+        if (punto(normal, restar(vista.camara.eye, centro)) <= 0) continue;
 
         const puntos = [];
         let profundidad = 0;
         let fuera = false;
         for (const relativo of cara.vertices) {
           const vertice = transformarVertice(verticeDeCaja(caja, relativo), transformacion);
-          const proyectado = proyectarPunto(vertice, camara);
+          const proyectado = proyectarPunto(vertice, vista.camara);
           if (!proyectado) {
             fuera = true;
             break;
@@ -409,10 +366,11 @@ function crearBackendCanvas2D(canvas) {
           profundidad += proyectado.profundidad;
         }
         if (fuera || puntos.length !== 4) continue;
+        const luz = intensidadSombra(normal);
         caras.push({
           puntos,
           profundidad: profundidad / 4,
-          relleno: colorSombreado(colorBase, intensidadSombra(normal)),
+          relleno: `rgb(${Math.round(r * 255 * luz)}, ${Math.round(g * 255 * luz)}, ${Math.round(b * 255 * luz)})`,
         });
       }
     }
@@ -432,7 +390,7 @@ function crearBackendCanvas2D(canvas) {
     }
   }
 
-  return { dibujar, marcarSucio() {}, destruir() {} };
+  return { dibujar, destruir() {} };
 }
 
 /* ── visor (interacción compartida) ──────────────────────────────────────── */
@@ -441,7 +399,7 @@ function crearBackendCanvas2D(canvas) {
  * Crea el visor sobre un canvas.
  *
  * @param {HTMLCanvasElement} canvas
- * @param {{mostrarFrentes?: boolean}} [opciones]
+ * @param {{mostrarFrentes?: boolean, alDibujar?: (vista: object) => void}} [opciones]
  */
 export function crearVisor3D(canvas, opciones = {}) {
   const estado = {
@@ -450,11 +408,15 @@ export function crearVisor3D(canvas, opciones = {}) {
     pitch: VISTA_INICIAL.pitch,
     zoom: VISTA_INICIAL.zoom,
     mostrarFrentes: opciones.mostrarFrentes ?? true,
-    apertura: 0,
+    resaltada: null,
     arrastrando: false,
     ultimoX: 0,
     ultimoY: 0,
   };
+
+  // Apertura por grupo (cada puerta y cada cajón se abren independientes).
+  const aperturas = new Map();
+  const objetivos = new Map();
 
   let gl = null;
   try {
@@ -471,44 +433,111 @@ export function crearVisor3D(canvas, opciones = {}) {
   canvas.dataset.renderer = gl ? "webgl2" : "canvas2d";
 
   let pedido = 0;
-  const dibujar = () => {
-    cancelAnimationFrame(pedido);
-    pedido = requestAnimationFrame(() => backend.dibujar(estado));
+  let animacion = 0;
+  let ultimaVista = null;
+
+  const aperturaDeParte = (parte) => {
+    const grupo = grupoDeApertura(parte);
+    return grupo ? aperturas.get(grupo) ?? 0 : 0;
   };
 
-  /* animación de apertura de puertas y cajones */
-  const DURACION_APERTURA = 520;
-  let animacion = 0;
+  function dibujarAhora() {
+    const ancho = canvas.clientWidth || 0;
+    const alto = canvas.clientHeight || 0;
+    if (!ancho || !alto) return;
 
-  function animarApertura(objetivo) {
-    const destino = Math.max(0, Math.min(1, Number(objetivo) || 0));
-    cancelAnimationFrame(animacion);
-    const desde = estado.apertura;
-    if (Math.abs(destino - desde) < 0.001) {
-      estado.apertura = destino;
-      backend.marcarSucio();
-      backend.dibujar(estado);
-      return;
+    const vista = calcularVista(estado, ancho, alto, aperturaDeParte);
+    ultimaVista = vista;
+    backend.dibujar(vista);
+
+    let maximo = 0;
+    let abiertos = 0;
+    for (const valor of aperturas.values()) {
+      if (valor > 0.5) abiertos++;
+      if (valor > maximo) maximo = valor;
     }
-    const inicio = performance.now();
+    canvas.dataset.abiertos = String(abiertos);
+    canvas.dataset.apertura = maximo.toFixed(2);
+    opciones.alDibujar?.(vista);
+  }
+
+  function dibujar() {
+    cancelAnimationFrame(pedido);
+    pedido = requestAnimationFrame(dibujarAhora);
+  }
+
+  /* animación de apertura */
+  function animar() {
+    cancelAnimationFrame(animacion);
+    let ultimo = performance.now();
     const paso = (ahora) => {
-      const avance = Math.min(1, (ahora - inicio) / DURACION_APERTURA);
-      // easing suave de entrada y salida
-      const suave = avance < 0.5
-        ? 4 * avance ** 3
-        : 1 - (-2 * avance + 2) ** 3 / 2;
-      estado.apertura = desde + (destino - desde) * suave;
-      backend.marcarSucio();
-      backend.dibujar(estado);
-      if (avance < 1) {
-        animacion = requestAnimationFrame(paso);
-      } else {
-        estado.apertura = destino;
-        backend.marcarSucio();
-        backend.dibujar(estado);
+      const dt = Math.min(64, ahora - ultimo);
+      ultimo = ahora;
+      let animando = false;
+
+      for (const [grupo, objetivo] of objetivos) {
+        const actual = aperturas.get(grupo) ?? 0;
+        const factor = 1 - Math.exp(-dt / VELOCIDAD_ANIMACION);
+        const nuevo = actual + (objetivo - actual) * factor;
+        if (Math.abs(objetivo - nuevo) < 0.004) {
+          aperturas.set(grupo, objetivo);
+        } else {
+          aperturas.set(grupo, nuevo);
+          animando = true;
+        }
       }
+
+      dibujarAhora();
+      if (animando) animacion = requestAnimationFrame(paso);
     };
     animacion = requestAnimationFrame(paso);
+  }
+
+  function gruposExistentes() {
+    const grupos = new Set();
+    for (const parte of estado.partes) {
+      const grupo = grupoDeApertura(parte);
+      if (grupo) grupos.add(grupo);
+    }
+    return grupos;
+  }
+
+  /** Abre o cierra todas las puertas y cajones. */
+  function setApertura(objetivo) {
+    const valor = Math.max(0, Math.min(1, Number(objetivo) || 0));
+    for (const grupo of gruposExistentes()) objetivos.set(grupo, valor);
+    animar();
+  }
+
+  /** Abre o cierra un grupo puntual (una puerta o un cajón). */
+  function alternarGrupo(grupo) {
+    if (!grupo) return;
+    const objetivo = (objetivos.get(grupo) ?? 0) > 0.5 ? 0 : 1;
+    objetivos.set(grupo, objetivo);
+    animar();
+  }
+
+  /** Identifica qué pieza hay bajo un pixel del canvas. */
+  function piezaEnPixel(xCss, yCss) {
+    if (!ultimaVista) return null;
+    const rayo = rayoDesdePixel(xCss, yCss, ultimaVista.ancho, ultimaVista.alto, ultimaVista.camara, FOV);
+    return piezaEnRayo(rayo, ultimaVista.piezas);
+  }
+
+  /** Abre/cierra la pieza que está bajo un pixel. Devuelve el grupo o null. */
+  function alternarPiezaEnPixel(xCss, yCss) {
+    const elegida = piezaEnPixel(xCss, yCss);
+    if (!elegida) return null;
+    const grupo = grupoDeApertura(elegida.parte);
+    if (!grupo) return null;
+    alternarGrupo(grupo);
+    return grupo;
+  }
+
+  /** Proyecta un punto 3D a píxeles CSS del canvas (o null si está detrás). */
+  function proyectar(punto3d) {
+    if (!ultimaVista) return null;
+    return proyectarPunto(punto3d, ultimaVista.camara);
   }
 
   /* interacción */
@@ -516,7 +545,14 @@ export function crearVisor3D(canvas, opciones = {}) {
     estado.arrastrando = true;
     estado.ultimoX = evento.clientX;
     estado.ultimoY = evento.clientY;
-    canvas.setPointerCapture?.(evento.pointerId);
+    estado.inicioX = evento.clientX;
+    estado.inicioY = evento.clientY;
+    estado.inicioTiempo = performance.now();
+    try {
+      canvas.setPointerCapture?.(evento.pointerId);
+    } catch {
+      /* algunos entornos no tienen puntero activo (eventos sintéticos) */
+    }
     canvas.style.cursor = "grabbing";
   };
   const alMover = (evento) => {
@@ -533,8 +569,23 @@ export function crearVisor3D(canvas, opciones = {}) {
   const alSoltar = (evento) => {
     if (!estado.arrastrando) return;
     estado.arrastrando = false;
-    canvas.releasePointerCapture?.(evento.pointerId);
+    try {
+      canvas.releasePointerCapture?.(evento.pointerId);
+    } catch {
+      /* ignorar: puede no haber captura activa */
+    }
     canvas.style.cursor = "grab";
+
+    // Si fue un click (sin arrastrar), abrir/cerrar la pieza bajo el cursor.
+    const movido = Math.hypot(
+      (evento.clientX ?? estado.inicioX) - estado.inicioX,
+      (evento.clientY ?? estado.inicioY) - estado.inicioY,
+    );
+    const rapido = performance.now() - estado.inicioTiempo < 500;
+    if (movido < 5 && rapido) {
+      const caja = canvas.getBoundingClientRect();
+      alternarPiezaEnPixel(evento.clientX - caja.left, evento.clientY - caja.top);
+    }
   };
   const alGirarRueda = (evento) => {
     evento.preventDefault();
@@ -563,23 +614,36 @@ export function crearVisor3D(canvas, opciones = {}) {
   }
 
   return {
-    /** Actualiza las piezas y redibuja. */
+    /** Actualiza las piezas y redibuja (mantiene las aperturas). */
     actualizar(partes) {
       estado.partes = Array.isArray(partes) ? partes : [];
-      backend.marcarSucio();
+      // limpiar grupos que ya no existen
+      const existentes = gruposExistentes();
+      for (const grupo of [...aperturas.keys()]) if (!existentes.has(grupo)) aperturas.delete(grupo);
+      for (const grupo of [...objetivos.keys()]) if (!existentes.has(grupo)) objetivos.delete(grupo);
       dibujar();
     },
     redimensionar: dibujar,
     reiniciarCamara,
     setMostrarFrentes(valor) {
       estado.mostrarFrentes = Boolean(valor);
-      backend.marcarSucio();
       dibujar();
     },
-    /** Abre (1) o cierra (0) puertas y cajones, con animación. */
-    setApertura: animarApertura,
-    get apertura() {
-      return estado.apertura;
+    /** Resalta una pieza (o ninguna con null). */
+    setResaltada(clave) {
+      const nueva = clave ?? null;
+      if (estado.resaltada === nueva) return;
+      estado.resaltada = nueva;
+      dibujar();
+    },
+    /** Abre (1) o cierra (0) todo, con animación. */
+    setApertura,
+    alternarGrupo,
+    piezaEnPixel,
+    alternarPiezaEnPixel,
+    proyectar,
+    get vista() {
+      return ultimaVista;
     },
     get estado() {
       return estado;

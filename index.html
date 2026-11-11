@@ -73,11 +73,19 @@
               </div>
             </div>
             <div class="vista-acciones">
+              <label class="check-medidas" title="Qué medidas mostrar sobre el modelo">
+                <span>Medidas</span>
+                <select id="sel-medidas">
+                  <option value="hover">al pasar el mouse</option>
+                  <option value="todas">todas las piezas</option>
+                  <option value="sin">ocultas</option>
+                </select>
+              </label>
               <label class="check" title="Mostrar u ocultar puertas y frentes de cajón">
                 <input id="chk-frentes" type="checkbox" checked />
                 <span>Frentes</span>
               </label>
-              <button id="btn-abrir" class="btn btn-small" type="button" title="Abrir puertas y cajones" aria-pressed="false">Abrir</button>
+              <button id="btn-abrir" class="btn btn-small" type="button" title="Abrir o cerrar todas las puertas y cajones" aria-pressed="false">Abrir</button>
               <button id="btn-pantalla" class="btn btn-small" type="button" title="Ver el 3D en pantalla completa" aria-pressed="false">⛶ Pantalla</button>
               <span id="medidas-exteriores" class="muted"></span>
             </div>
@@ -85,6 +93,9 @@
           <div id="diagrama" class="diagram is-3d">
             <div class="diagram-2d"></div>
             <canvas class="diagram-3d" aria-label="Vista 3D del mueble"></canvas>
+            <div id="capa-medidas" class="capa-medidas"></div>
+            <div id="tooltip-pieza" class="tooltip-pieza" hidden></div>
+            <div class="diagram-ayuda">click en una puerta o cajón para abrirlo · arrastrá para rotar</div>
           </div>
         </div>
 

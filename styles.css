@@ -280,6 +280,63 @@ body.sin-scroll { overflow: hidden; }
 .diagram.is-3d .diagram-3d { display: block; }
 .diagram .vacio { color: var(--dim); font-size: 13px; }
 
+/* capas de medidas sobre el 3D */
+.capa-medidas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.cota {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: rgb(12 10 9 / 82%);
+  border: 1px solid var(--line);
+  color: var(--accent-soft);
+  font-size: 11px;
+  line-height: 1.3;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(2px);
+}
+.cota--pieza {
+  color: var(--text);
+  background: rgb(12 10 9 / 90%);
+  font-size: 10.5px;
+}
+.cota--pieza b { color: var(--accent-soft); font-weight: 600; }
+.tooltip-pieza {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  transform: translate(14px, -130%);
+  background: rgb(20 18 17 / 96%);
+  border: 1px solid #44403c;
+  color: var(--text);
+  font-size: 11.5px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 50%);
+}
+.tooltip-pieza[hidden] { display: none; }
+.tooltip-pieza b { color: var(--accent-soft); }
+.diagram-ayuda {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  transform: translateX(-50%);
+  color: var(--dim);
+  font-size: 10.5px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 4;
+}
+.check-medidas { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+.check-medidas select { font-size: 11.5px; padding: 4px 7px; }
+
 .vista-head { display: flex; align-items: center; gap: 12px; }
 .vista-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .check { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
