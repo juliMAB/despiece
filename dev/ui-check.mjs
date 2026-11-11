@@ -209,6 +209,26 @@ async function main() {
     `),
   );
 
+  // abrir puertas y cajones (con animación)
+  const firmaCerrado = await firmaCanvas();
+  await evaluate(`document.querySelector('#btn-abrir').click()`);
+  await sleep(950);
+  const aperturaAbierta = await evaluate(`document.querySelector('.diagram-3d').dataset.apertura`);
+  const firmaAbierto = await firmaCanvas();
+  check("abrir puertas cambia el dibujo 3D", firmaCerrado !== firmaAbierto);
+  check("la animación de apertura llega al final", aperturaAbierta === "1.00", `apertura: ${aperturaAbierta}`);
+  await shot("ui-1f-abierto.png");
+
+  await evaluate(`document.querySelector('#btn-abrir').click()`);
+  await sleep(950);
+  const aperturaCerrada = await evaluate(`document.querySelector('.diagram-3d').dataset.apertura`);
+  const firmaCerrado2 = await firmaCanvas();
+  check(
+    "cerrar vuelve al estado inicial",
+    aperturaCerrada === "0.00" && firmaCerrado2 === firmaCerrado,
+    `apertura: ${aperturaCerrada}`,
+  );
+
   // pantalla completa
   await evaluate(`document.querySelector('#btn-pantalla').click()`);
   await sleep(500);
@@ -245,6 +265,18 @@ async function main() {
   );
   check("cambia de plantilla", JSON.stringify(kpisComoda) !== JSON.stringify(kpisIniciales));
   await shot("ui-2-comoda.png");
+
+  // los cajones también se abren
+  await evaluate(`document.querySelector('#btn-abrir').click()`);
+  await sleep(950);
+  const firmaCajones = await firmaCanvas();
+  check(
+    "abrir cajones de la cómoda cambia el dibujo 3D",
+    (await evaluate(`document.querySelector('.diagram-3d').dataset.apertura`)) === "1.00",
+  );
+  await shot("ui-2b-cajones-abiertos.png");
+  await evaluate(`document.querySelector('#btn-abrir').click()`);
+  await sleep(950);
 
   // 3) editar la profundidad y ver que cambie el alto/profundidad del resumen
   const antesProfundidad = await evaluate(

@@ -146,6 +146,20 @@ describe("cómoda con 3 cajones", () => {
       cellDepth - config.drawerSlidesReserve - 2 * config.panelThickness - 2 * config.panelJointClearance;
     assert.equal(side.size.width, Math.round(expected * 1000) / 1000);
   });
+
+  test("cada pieza de cajón sabe a qué cajón pertenece", () => {
+    // para poder animar el cajón completo (frente, laterales, trasera y fondo)
+    const piezasCajon = result.parts.filter((parte) => parte.drawerIndex !== undefined);
+    assert.equal(piezasCajon.length, 15); // 3 cajones × 5 piezas
+    for (const pieza of piezasCajon) {
+      assert.ok(Number.isInteger(pieza.drawerIndex));
+      assert.ok(pieza.drawerIndex >= 0 && pieza.drawerIndex < 3);
+      assert.equal(typeof pieza.sourceModuleId, "string");
+    }
+    for (let indice = 0; indice < 3; indice++) {
+      assert.equal(piezasCajon.filter((pieza) => pieza.drawerIndex === indice).length, 5);
+    }
+  });
 });
 
 /* ──────────────────────────────────────────────────────────────────────────

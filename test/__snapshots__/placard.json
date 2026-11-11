@@ -143,6 +143,7 @@
    "key": "drawer:c1-cajones:0:front",
    "role": "drawer-front",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 0,
    "position": {
     "x": -0.45,
     "y": 0.176,
@@ -160,6 +161,7 @@
    "key": "drawer:c1-cajones:0:left",
    "role": "drawer-side",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 0,
    "position": {
     "x": -0.728,
     "y": 0.174,
@@ -177,6 +179,7 @@
    "key": "drawer:c1-cajones:0:right",
    "role": "drawer-side",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 0,
    "position": {
     "x": -0.17200000000000004,
     "y": 0.174,
@@ -194,6 +197,7 @@
    "key": "drawer:c1-cajones:0:back",
    "role": "drawer-back",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 0,
    "position": {
     "x": -0.45,
     "y": 0.174,
@@ -211,6 +215,7 @@
    "key": "drawer:c1-cajones:0:bottom",
    "role": "drawer-bottom",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 0,
    "position": {
     "x": -0.45,
     "y": 0.07,
@@ -228,6 +233,7 @@
    "key": "drawer:c1-cajones:1:front",
    "role": "drawer-front",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 1,
    "position": {
     "x": -0.45,
     "y": 0.464,
@@ -245,6 +251,7 @@
    "key": "drawer:c1-cajones:1:left",
    "role": "drawer-side",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 1,
    "position": {
     "x": -0.728,
     "y": 0.466,
@@ -262,6 +269,7 @@
    "key": "drawer:c1-cajones:1:right",
    "role": "drawer-side",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 1,
    "position": {
     "x": -0.17200000000000004,
     "y": 0.466,
@@ -279,6 +287,7 @@
    "key": "drawer:c1-cajones:1:back",
    "role": "drawer-back",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 1,
    "position": {
     "x": -0.45,
     "y": 0.466,
@@ -296,6 +305,7 @@
    "key": "drawer:c1-cajones:1:bottom",
    "role": "drawer-bottom",
    "sourceModuleId": "c1-cajones",
+   "drawerIndex": 1,
    "position": {
     "x": -0.45,
     "y": 0.361,

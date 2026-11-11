@@ -24,6 +24,9 @@ import {
   matrizVista,
   matrizPerspectiva,
   transformarPunto,
+  rotarPuntoY,
+  rotarNormalY,
+  transformacionesDeApertura,
 } from "../src/ui/geometry3d.js";
 
 /* ── traducción de piezas a cajas ────────────────────────────────────────── */
@@ -251,5 +254,75 @@ describe("matrices", () => {
     assert.ok(Math.abs(clip.x / clip.w) < 1e-6);
     assert.ok(Math.abs(clip.y / clip.w) < 1e-6);
     assert.ok(clip.z / clip.w > -1 && clip.z / clip.w < 1);
+  });
+});
+
+/* ── transformaciones de apertura ────────────────────────────────────────── */
+
+describe("apertura de puertas y cajones", () => {
+  test("rotar alrededor de un eje vertical", () => {
+    // -90° manda el borde libre (+X) hacia adelante (+Z)
+    const girado = rotarPuntoY({ x: 1, y: 0, z: 0 }, -Math.PI / 2, { x: 0, y: 0, z: 0 });
+    assert.ok(Math.abs(girado.x) < 1e-9);
+    assert.ok(Math.abs(girado.z - 1) < 1e-9);
+    // +90° lo manda hacia atrás
+    const alReves = rotarPuntoY({ x: 1, y: 0, z: 0 }, Math.PI / 2, { x: 0, y: 0, z: 0 });
+    assert.ok(Math.abs(alReves.z + 1) < 1e-9);
+  });
+
+  test("el punto de la bisagra no se mueve", () => {
+    const pivote = { x: -0.3, y: 0.5, z: 0.2 };
+    const quieto = rotarPuntoY(pivote, -Math.PI / 2, pivote);
+    assert.deepEqual(quieto, pivote);
+  });
+
+  test("las normales giran junto con la hoja", () => {
+    const normal = rotarNormalY({ x: 0, y: 0, z: 1 }, -Math.PI / 2);
+    assert.ok(Math.abs(normal.x + 1) < 1e-9);
+    assert.ok(Math.abs(normal.z) < 1e-9);
+  });
+
+  test("cerrado no hay transformaciones", () => {
+    const mapa = transformacionesDeApertura(
+      [{ key: "a", role: "door-front", doorHinge: "left", position: { x: 0, y: 0, z: 0.2 }, size: { width: 0.3 } }],
+      0,
+    );
+    assert.equal(mapa.size, 0);
+  });
+
+  test("una puerta con bisagra izquierda gira hacia afuera", () => {
+    const puerta = {
+      key: "puerta",
+      role: "door-front",
+      doorHinge: "left",
+      position: { x: 0, y: 0.5, z: 0.22 },
+      size: { width: 0.3 },
+    };
+    const mapa = transformacionesDeApertura([puerta], 1);
+    const transformacion = mapa.get("puerta");
+    assert.equal(transformacion.tipo, "giro");
+    assert.ok(transformacion.angulo < 0);
+    // el pivote queda en el borde izquierdo de la hoja
+    assert.ok(Math.abs(transformacion.pivote.x + 0.15) < 1e-9);
+  });
+
+  test("las 5 piezas de un cajón avanzan juntas hacia adelante", () => {
+    const piezas = [
+      { key: "f", role: "drawer-front", sourceModuleId: "m1", drawerIndex: 0, size: { width: 0.5 } },
+      { key: "l", role: "drawer-side", sourceModuleId: "m1", drawerIndex: 0, size: { width: 0.4 } },
+      { key: "r", role: "drawer-side", sourceModuleId: "m1", drawerIndex: 0, size: { width: 0.4 } },
+      { key: "b", role: "drawer-back", sourceModuleId: "m1", drawerIndex: 0, size: { width: 0.5 } },
+      { key: "d", role: "drawer-bottom", sourceModuleId: "m1", drawerIndex: 0, size: { width: 0.4 } },
+    ];
+    const mapa = transformacionesDeApertura(piezas, 1);
+    assert.equal(mapa.size, 5);
+    const avance = mapa.get("f").delta.z;
+    assert.ok(avance > 0.2 && avance < 0.5, `avance inesperado: ${avance}`);
+    for (const pieza of piezas) {
+      assert.ok(Math.abs(mapa.get(pieza.key).delta.z - avance) < 1e-9, "todos avanzan lo mismo");
+    }
+    // a mitad de apertura avanza la mitad
+    const medio = transformacionesDeApertura(piezas, 0.5);
+    assert.ok(Math.abs(medio.get("f").delta.z - avance / 2) < 1e-9);
   });
 });

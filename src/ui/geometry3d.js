@@ -265,3 +265,81 @@ export function transformarPunto(m, p) {
     w: m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15],
   };
 }
+
+/* ── transformaciones para animaciones ───────────────────────────────────── */
+
+/**
+ * Rota un punto alrededor de un eje vertical (Y) que pasa por `pivote`.
+ * Ángulo positivo gira de +X hacia -Z (regla de la mano derecha).
+ */
+export function rotarPuntoY(p, angulo, pivote) {
+  const dx = p.x - pivote.x;
+  const dz = p.z - pivote.z;
+  const cos = Math.cos(angulo);
+  const sin = Math.sin(angulo);
+  return {
+    x: pivote.x + dx * cos + dz * sin,
+    y: p.y,
+    z: pivote.z - dx * sin + dz * cos,
+  };
+}
+
+/** Rota una normal alrededor de Y (sin traslación). */
+export function rotarNormalY(normal, angulo) {
+  const cos = Math.cos(angulo);
+  const sin = Math.sin(angulo);
+  return {
+    x: normal.x * cos + normal.z * sin,
+    y: normal.y,
+    z: -normal.x * sin + normal.z * cos,
+  };
+}
+
+/** Traslada un punto. */
+export function trasladarPunto(p, delta) {
+  return { x: p.x + delta.x, y: p.y + delta.y, z: p.z + delta.z };
+}
+
+/**
+ * Calcula las transformaciones de las piezas para una apertura dada.
+ *
+ * @param {Array} partes - piezas del motor
+ * @param {number} apertura - 0 (cerrado) a 1 (abierto)
+ * @returns {Map<string, {tipo: "giro", angulo: number, pivote: object} | {tipo: "traslacion", delta: object}>}
+ */
+export function transformacionesDeApertura(partes, apertura) {
+  const transformaciones = new Map();
+  if (!(apertura > 0)) return transformaciones;
+
+  const ROLES_CAJON = new Set(["drawer-front", "drawer-side", "drawer-back", "drawer-bottom"]);
+
+  // Cuánto avanza cada cajón: se deduce de la profundidad de sus laterales.
+  const avancePorCajon = new Map();
+  for (const parte of partes) {
+    if (parte.role !== "drawer-side") continue;
+    const grupo = `${parte.sourceModuleId}:${parte.drawerIndex}`;
+    if (!avancePorCajon.has(grupo)) {
+      avancePorCajon.set(grupo, Math.max(0.15, parte.size.width * 0.85));
+    }
+  }
+
+  for (const parte of partes) {
+    if (parte.role === "door-front" && parte.doorHinge) {
+      // La bisagra abierta gira hacia afuera: -90° si es a la izquierda, +90° a la derecha.
+      const signo = parte.doorHinge === "left" ? -1 : 1;
+      const angulo = signo * (Math.PI / 2) * apertura;
+      const pivote = {
+        x: parte.position.x + (parte.doorHinge === "left" ? -parte.size.width / 2 : parte.size.width / 2),
+        y: parte.position.y,
+        z: parte.position.z,
+      };
+      transformaciones.set(parte.key, { tipo: "giro", angulo, pivote });
+    } else if (ROLES_CAJON.has(parte.role)) {
+      const grupo = `${parte.sourceModuleId}:${parte.drawerIndex}`;
+      const avance = (avancePorCajon.get(grupo) ?? 0.3) * apertura;
+      transformaciones.set(parte.key, { tipo: "traslacion", delta: { x: 0, y: 0, z: avance } });
+    }
+  }
+
+  return transformaciones;
+}

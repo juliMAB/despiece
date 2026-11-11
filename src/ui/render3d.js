@@ -20,13 +20,20 @@ import {
   distanciaParaEncuadrar,
   CARAS,
   verticeDeCaja,
+  centroDeCara,
   caraVisible,
   intensidadSombra,
   colorSombreado,
   hexARgb,
+  punto,
+  restar,
   matrizVista,
   matrizPerspectiva,
   multiplicarMatrices,
+  transformacionesDeApertura,
+  rotarPuntoY,
+  rotarNormalY,
+  trasladarPunto,
   LUZ,
 } from "./geometry3d.js";
 
@@ -55,6 +62,35 @@ function cajasVisibles(estado) {
   return estado.partes
     .filter((parte) => parteVisible(parte, estado.mostrarFrentes))
     .map(partToBox);
+}
+
+/**
+ * Piezas con su transformación de apertura (puertas que giran, cajones que
+ * avanzan). Se usa para construir la geometría que se dibuja.
+ */
+function piezasParaDibujar(estado) {
+  const partes = estado.partes.filter((parte) => parteVisible(parte, estado.mostrarFrentes));
+  const transformaciones = transformacionesDeApertura(partes, estado.apertura);
+  return partes.map((parte) => ({
+    caja: partToBox(parte),
+    transformacion: transformaciones.get(parte.key) ?? null,
+  }));
+}
+
+/** Aplica una transformación a un vértice de la caja. */
+function transformarVertice(vertice, transformacion) {
+  if (!transformacion) return vertice;
+  if (transformacion.tipo === "giro") {
+    return rotarPuntoY(vertice, transformacion.angulo, transformacion.pivote);
+  }
+  return trasladarPunto(vertice, transformacion.delta);
+}
+
+/** Aplica una transformación a una normal. */
+function transformarNormal(normal, transformacion) {
+  if (!transformacion) return normal;
+  if (transformacion.tipo === "giro") return rotarNormalY(normal, transformacion.angulo);
+  return normal;
 }
 
 /** Datos de cámara para el estado actual. */
@@ -175,20 +211,23 @@ function crearBackendWebGL(canvas, gl) {
   let sucio = true;
 
   function reconstruir(estado) {
-    const cajas = cajasVisibles(estado);
+    const piezas = piezasParaDibujar(estado);
     const posiciones = [];
     const normales = [];
     const colores = [];
 
-    for (const caja of cajas) {
+    for (const { caja, transformacion } of piezas) {
       const rgb = hexARgb(PALETA_3D[caja.role] ?? PALETA_3D.group);
       const color = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
       for (const cara of CARAS) {
-        const vertices = cara.vertices.map((relativo) => verticeDeCaja(caja, relativo));
+        const normal = transformarNormal(cara.normal, transformacion);
+        const vertices = cara.vertices.map((relativo) =>
+          transformarVertice(verticeDeCaja(caja, relativo), transformacion),
+        );
         for (const orden of [[0, 1, 2], [0, 2, 3]]) {
           for (const indice of orden) {
             posiciones.push(vertices[indice].x, vertices[indice].y, vertices[indice].z);
-            normales.push(cara.normal.x, cara.normal.y, cara.normal.z);
+            normales.push(normal.x, normal.y, normal.z);
             colores.push(color[0], color[1], color[2]);
           }
         }
@@ -204,7 +243,7 @@ function crearBackendWebGL(canvas, gl) {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colores), gl.STATIC_DRAW);
 
     // Grilla del piso
-    const { min, max } = boxesBounds(cajas);
+    const { min, max } = boxesBounds(piezas.map((pieza) => pieza.caja));
     const radio = Math.hypot(max.x - min.x, max.y - min.y, max.z - min.z) / 2 || 1;
     const paso = radio > 1.2 ? 0.4 : 0.2;
     const desdeX = Math.floor(min.x / paso) * paso;
@@ -238,6 +277,7 @@ function crearBackendWebGL(canvas, gl) {
       canvas.height = altoPx;
     }
     gl.viewport(0, 0, anchoPx, altoPx);
+    canvas.dataset.apertura = estado.apertura.toFixed(2);
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
@@ -316,12 +356,14 @@ function crearBackendCanvas2D(canvas) {
 
     canvas.width = Math.round(ancho * dpr);
     canvas.height = Math.round(alto * dpr);
+    canvas.dataset.apertura = estado.apertura.toFixed(2);
     contexto.setTransform(dpr, 0, 0, dpr, 0, 0);
     contexto.clearRect(0, 0, ancho, alto);
 
-    const cajas = cajasVisibles(estado);
-    if (cajas.length === 0) return;
+    const piezas = piezasParaDibujar(estado);
+    if (piezas.length === 0) return;
 
+    const cajas = piezas.map((pieza) => pieza.caja);
     const { camara, min, max, radio } = cámaraActual(estado, cajas, ancho, alto);
 
     // grilla
@@ -344,17 +386,21 @@ function crearBackendCanvas2D(canvas) {
     for (let x = desdeX; x <= hastaX + 1e-9; x += paso) trazar({ x, y: 0, z: desdeZ }, { x, y: 0, z: hastaZ });
     for (let z = desdeZ; z <= hastaZ + 1e-9; z += paso) trazar({ x: desdeX, y: 0, z }, { x: hastaX, y: 0, z });
 
-    // caras ordenadas por profundidad
+    // caras ordenadas por profundidad (solo si no hay WebGL)
     const caras = [];
-    for (const caja of cajas) {
+    for (const { caja, transformacion } of piezas) {
       const colorBase = PALETA_3D[caja.role] ?? PALETA_3D.group;
       for (const cara of CARAS) {
-        if (!caraVisible(caja, cara, camara.eye)) continue;
+        const normal = transformarNormal(cara.normal, transformacion);
+        const centro = transformarVertice(centroDeCara(caja, cara.normal), transformacion);
+        if (punto(normal, restar(camara.eye, centro)) <= 0) continue;
+
         const puntos = [];
         let profundidad = 0;
         let fuera = false;
         for (const relativo of cara.vertices) {
-          const proyectado = proyectarPunto(verticeDeCaja(caja, relativo), camara);
+          const vertice = transformarVertice(verticeDeCaja(caja, relativo), transformacion);
+          const proyectado = proyectarPunto(vertice, camara);
           if (!proyectado) {
             fuera = true;
             break;
@@ -366,7 +412,7 @@ function crearBackendCanvas2D(canvas) {
         caras.push({
           puntos,
           profundidad: profundidad / 4,
-          relleno: colorSombreado(colorBase, intensidadSombra(cara.normal)),
+          relleno: colorSombreado(colorBase, intensidadSombra(normal)),
         });
       }
     }
@@ -404,6 +450,7 @@ export function crearVisor3D(canvas, opciones = {}) {
     pitch: VISTA_INICIAL.pitch,
     zoom: VISTA_INICIAL.zoom,
     mostrarFrentes: opciones.mostrarFrentes ?? true,
+    apertura: 0,
     arrastrando: false,
     ultimoX: 0,
     ultimoY: 0,
@@ -428,6 +475,41 @@ export function crearVisor3D(canvas, opciones = {}) {
     cancelAnimationFrame(pedido);
     pedido = requestAnimationFrame(() => backend.dibujar(estado));
   };
+
+  /* animación de apertura de puertas y cajones */
+  const DURACION_APERTURA = 520;
+  let animacion = 0;
+
+  function animarApertura(objetivo) {
+    const destino = Math.max(0, Math.min(1, Number(objetivo) || 0));
+    cancelAnimationFrame(animacion);
+    const desde = estado.apertura;
+    if (Math.abs(destino - desde) < 0.001) {
+      estado.apertura = destino;
+      backend.marcarSucio();
+      backend.dibujar(estado);
+      return;
+    }
+    const inicio = performance.now();
+    const paso = (ahora) => {
+      const avance = Math.min(1, (ahora - inicio) / DURACION_APERTURA);
+      // easing suave de entrada y salida
+      const suave = avance < 0.5
+        ? 4 * avance ** 3
+        : 1 - (-2 * avance + 2) ** 3 / 2;
+      estado.apertura = desde + (destino - desde) * suave;
+      backend.marcarSucio();
+      backend.dibujar(estado);
+      if (avance < 1) {
+        animacion = requestAnimationFrame(paso);
+      } else {
+        estado.apertura = destino;
+        backend.marcarSucio();
+        backend.dibujar(estado);
+      }
+    };
+    animacion = requestAnimationFrame(paso);
+  }
 
   /* interacción */
   const alPresionar = (evento) => {
@@ -494,6 +576,11 @@ export function crearVisor3D(canvas, opciones = {}) {
       backend.marcarSucio();
       dibujar();
     },
+    /** Abre (1) o cierra (0) puertas y cajones, con animación. */
+    setApertura: animarApertura,
+    get apertura() {
+      return estado.apertura;
+    },
     get estado() {
       return estado;
     },
@@ -502,6 +589,7 @@ export function crearVisor3D(canvas, opciones = {}) {
     },
     destruir() {
       cancelAnimationFrame(pedido);
+      cancelAnimationFrame(animacion);
       observador?.disconnect();
       canvas.removeEventListener("pointerdown", alPresionar);
       canvas.removeEventListener("pointermove", alMover);

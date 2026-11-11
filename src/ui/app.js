@@ -63,6 +63,7 @@ const state = {
   resultado: null, // salida del motor
   vista: "despiece", // despiece | mecanizados
   vista3d: storage.leerVista3d(), // true = 3D, false = 2D
+  abierto: false, // puertas y cajones abiertos en el 3D
 };
 
 const $ = (id) => document.getElementById(id);
@@ -75,6 +76,7 @@ const refs = {
   lienzo2d: document.querySelector("#diagrama .diagram-2d"),
   canvas3d: document.querySelector("#diagrama .diagram-3d"),
   chkFrentes: $("chk-frentes"),
+  btnAbrir: $("btn-abrir"),
   btnPantalla: $("btn-pantalla"),
   tabsVista: [...document.querySelectorAll(".tab-vista")],
   medidas: $("medidas-exteriores"),
@@ -321,6 +323,15 @@ function aplicarVista() {
 /* ── pantalla completa del visor ─────────────────────────────────────────── */
 
 const tarjetaVista = refs.diagrama.closest(".canvas-card");
+
+/** Abre o cierra puertas y cajones con animación. */
+function alternarApertura(abrir) {
+  const valor = abrir ?? !state.abierto;
+  state.abierto = valor;
+  refs.btnAbrir.setAttribute("aria-pressed", String(valor));
+  refs.btnAbrir.textContent = valor ? "Cerrar" : "Abrir";
+  asegurarVisor().setApertura(valor ? 1 : 0);
+}
 
 function pantallaCompleta(activar) {
   const activa = activar ?? !tarjetaVista.classList.contains("pantalla-completa");
@@ -766,6 +777,8 @@ function conectarEventos() {
   refs.chkFrentes.addEventListener("change", (evento) => {
     asegurarVisor().setMostrarFrentes(evento.target.checked);
   });
+
+  refs.btnAbrir.addEventListener("click", () => alternarApertura());
 
   refs.btnPantalla.addEventListener("click", () => pantallaCompleta());
 
