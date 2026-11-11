@@ -6,40 +6,42 @@
  * en el navegador: no hay backend, no hay cuentas y no se envía nada a ningún
  * servidor.
  *
+ * Todos los cambios del DISEÑO pasan por la capa de comandos
+ * (`src/app/commands.js`), que mantiene el historial y las revisiones. La UI
+ * solo dispara comandos y vuelve a dibujar. El estado de vista (2D/3D, medidas,
+ * frentes, cámara) no entra al historial: es parte de la interfaz.
+ *
  * Estructura de la interfaz:
  *   - barra superior: nombre del proyecto y acciones
  *   - barra lateral: plantillas y proyectos guardados
- *   - panel central: diagrama 2D, edición de módulos y configuración
+ *   - panel central: vista 3D/2D, edición de módulos y configuración
  *   - panel derecho: resumen, avisos, despiece y mecanizados
  */
 
 import {
-  compileFurniture,
   buildCutlist,
   cutlistToCsv,
   summarize,
-  DEFAULT_CONFIG,
   withDefaults,
   ROLE_LABELS,
+  compileFurniture,
 } from "../index.js";
 import { TEMPLATES } from "../../templates/index.js";
 import { el, mount, metros, milimetros } from "./dom.js";
 import { renderDiagram } from "./render2d.js";
 import { crearVisor3D } from "./render3d.js";
 import { proyectarPunto } from "./geometry3d.js";
+import { crearSesion } from "../app/commands.js";
+import {
+  LIMITES,
+  TIPOS_MODULO,
+  normalizarDiseno,
+  numero,
+  proyectoDesdePlantilla,
+} from "../app/design.js";
 import * as storage from "./storage.js";
 
-/* ── tipos de módulo ─────────────────────────────────────────────────────── */
-
-const TIPOS_MODULO = [
-  ["doors", "Puertas (par)"],
-  ["left-door", "Puerta izq."],
-  ["right-door", "Puerta der."],
-  ["drawer", "Cajones"],
-  ["shelf", "Estante"],
-];
-
-const TIPOS_VALIDOS = new Set(TIPOS_MODULO.map(([tipo]) => tipo));
+/* ── configuración (solo etiquetas y pasos de la UI) ─────────────────────── */
 
 const CAMPOS_CONFIG = [
   ["depth", "Profundidad", 0.3, 0.9, 0.005],
@@ -60,12 +62,15 @@ const CAMPOS_CONFIG = [
 /* ── estado ──────────────────────────────────────────────────────────────── */
 
 const state = {
-  project: null, // { id, name, design }
+  sesion: null, // capa de comandos + historial
   resultado: null, // salida del motor
   vista: "despiece", // despiece | mecanizados
   vista3d: storage.leerVista3d(), // true = 3D, false = 2D
   medidas: "hover", // hover | todas | sin
 };
+
+/** Proyecto actual (copia del estado de la sesión). */
+const proyecto = () => state.sesion.estado;
 
 const $ = (id) => document.getElementById(id);
 
@@ -96,16 +101,6 @@ const refs = {
 
 /* ── utilidades ──────────────────────────────────────────────────────────── */
 
-const numero = (valor, porDefecto = 0) => {
-  const n = Number.parseFloat(String(valor).replace(",", "."));
-  return Number.isFinite(n) ? n : porDefecto;
-};
-
-const limitar = (valor, minimo, maximo) => Math.min(maximo, Math.max(minimo, valor));
-
-const idModulo = () =>
-  "m-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
-
 const slug = (texto) =>
   (texto || "mueble")
     .toLowerCase()
@@ -113,8 +108,6 @@ const slug = (texto) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "mueble";
-
-const pedirId = () => storage.nuevoId();
 
 let temporizadorEstado = null;
 function anunciar(texto) {
@@ -129,110 +122,100 @@ let temporizadorGuardado = null;
 function autoguardar() {
   clearTimeout(temporizadorGuardado);
   temporizadorGuardado = setTimeout(() => {
-    storage.guardarActual(state.project);
-    anunciar("Guardado automático " + new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
+    storage.guardarActual(proyecto());
+    anunciar(
+      "Guardado automático " +
+        new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+    );
   }, 500);
 }
 
-/* ── normalización de diseños (import / storage) ─────────────────────────── */
+/* ── capa de comandos ────────────────────────────────────────────────────── */
 
-function normalizarDiseno(entrada) {
-  const base = entrada?.design ?? entrada;
-  if (!base || !Array.isArray(base.columns)) {
-    throw new Error("El archivo no parece un diseño de Despiece (falta columns).");
+/**
+ * Ejecuta un comando y refresca la UI según el tipo de cambio.
+ *
+ * @param {string} nombre
+ * @param {object} [argumentos]
+ * @param {{refresco?: "todo"|"salidas"|"ninguno"}} [opciones]
+ */
+function ejecutar(nombre, argumentos = {}, opciones = {}) {
+  const respuesta = state.sesion.aplicar(nombre, argumentos);
+  if (!respuesta.ok) {
+    anunciar(`No se pudo: ${respuesta.error.mensaje} ${respuesta.error.sugerencia ?? ""}`);
+    return respuesta;
   }
 
-  const columns = base.columns.map((column) => {
-    const width = limitar(numero(column?.width, 0.6), 0.1, 2.5);
-    const modules = (Array.isArray(column?.modules) ? column.modules : []).map((mod) => {
-      const tipo = TIPOS_VALIDOS.has(mod?.type) ? mod.type : "doors";
-      const normalizado = {
-        id: typeof mod?.id === "string" && mod.id ? mod.id : idModulo(),
-        type: tipo,
-        height: limitar(numero(mod?.height, 0.4), 0.05, 3),
-      };
-      if (tipo === "drawer") {
-        normalizado.drawerCount = limitar(Math.round(numero(mod?.drawerCount, 2)), 1, 8);
-      }
-      return normalizado;
-    });
-    return { width, modules };
-  });
-
-  const config = {};
-  if (base.config && typeof base.config === "object") {
-    for (const [clave] of CAMPOS_CONFIG) {
-      const valor = numero(base.config[clave], Number.NaN);
-      if (Number.isFinite(valor)) config[clave] = valor;
-    }
+  const refresco = opciones.refresco ?? "salidas";
+  if (refresco === "todo") {
+    refs.nombre.value = proyecto().name;
+    compilar();
+    renderTodo();
+  } else if (refresco === "salidas") {
+    compilar();
+    renderSalidas();
+  } else {
+    compilar();
   }
-
-  return Object.keys(config).length > 0 ? { columns, config } : { columns };
+  return respuesta;
 }
 
-function proyectoDePlantilla(template) {
-  return {
-    id: pedirId(),
-    name: template.name,
-    design: {
-      columns: template.columns.map((column) => ({
-        width: column.width,
-        modules: column.modules.map((mod) => ({
-          ...mod,
-          id: idModulo(),
-        })),
-      })),
-      ...(template.config ? { config: { ...template.config } } : {}),
-    },
-  };
-}
+/* ── acciones de proyecto ────────────────────────────────────────────────── */
 
-function proyectoEnBlanco() {
-  return {
-    id: pedirId(),
-    name: "Mueble nuevo",
-    design: {
-      columns: [
-        {
-          width: 0.6,
-          modules: [{ id: idModulo(), type: "doors", height: 0.8 }],
-        },
-      ],
-    },
-  };
-}
-
-/* ── acciones ────────────────────────────────────────────────────────────── */
-
-function abrirProyecto(project) {
-  state.project = project;
-  refs.nombre.value = project.name;
-  storage.guardarActual(project);
+/** Carga un proyecto guardado o importado (reinicia la sesión y el historial). */
+function abrirProyecto(nuevoProyecto) {
+  state.sesion.reiniciar(nuevoProyecto);
+  refs.nombre.value = proyecto().name;
+  storage.guardarActual(proyecto());
   compilar();
   renderTodo();
-  anunciar(`Abierto: ${project.name}`);
+  anunciar(`Abierto: ${proyecto().name}`);
 }
 
 function abrirPlantilla(template) {
-  abrirProyecto(proyectoDePlantilla(template));
+  const respuesta = ejecutar("cargar_plantilla", { plantillaId: template.id }, { refresco: "todo" });
+  if (respuesta.ok) {
+    storage.guardarActual(proyecto());
+    anunciar(`Abierto: ${proyecto().name}`);
+  }
 }
 
 function abrirEnBlanco() {
-  abrirProyecto(proyectoEnBlanco());
+  const respuesta = ejecutar("crear_proyecto", {}, { refresco: "todo" });
+  if (respuesta.ok) {
+    storage.guardarActual(proyecto());
+    anunciar("Mueble nuevo");
+  }
 }
 
 function guardarProyecto() {
-  storage.guardarProyecto(state.project);
+  storage.guardarProyecto(proyecto());
   renderProyectos();
   anunciar("Proyecto guardado");
 }
 
 function borrarProyectoActual() {
-  const { id, name } = state.project;
+  const { id, name } = proyecto();
   if (!window.confirm(`¿Borrar "${name}"? Esta acción no se puede deshacer.`)) return;
   storage.borrarProyecto(id);
   abrirEnBlanco();
   anunciar("Proyecto borrado");
+}
+
+function deshacer() {
+  const respuesta = ejecutar("deshacer", {}, { refresco: "todo" });
+  if (respuesta.ok) {
+    storage.guardarActual(proyecto());
+    anunciar("Se deshizo el último cambio");
+  }
+}
+
+function rehacer() {
+  const respuesta = ejecutar("rehacer", {}, { refresco: "todo" });
+  if (respuesta.ok) {
+    storage.guardarActual(proyecto());
+    anunciar("Se rehizo el cambio");
+  }
 }
 
 function exportarCsv() {
@@ -243,7 +226,7 @@ function exportarCsv() {
     return;
   }
   descargar(
-    `despiece-${slug(state.project.name)}.csv`,
+    `despiece-${slug(proyecto().name)}.csv`,
     "\uFEFF" + cutlistToCsv(filas),
     "text/csv;charset=utf-8",
   );
@@ -254,12 +237,12 @@ function exportarJson() {
   const contenido = {
     format: "despiece-design",
     version: 1,
-    name: state.project.name,
-    design: state.project.design,
+    name: proyecto().name,
+    design: proyecto().design,
     exportedAt: new Date().toISOString(),
   };
   descargar(
-    `despiece-${slug(state.project.name)}.json`,
+    `despiece-${slug(proyecto().name)}.json`,
     JSON.stringify(contenido, null, 2),
     "application/json",
   );
@@ -274,7 +257,7 @@ async function importarJson(archivo) {
     const nombre = typeof data?.name === "string" && data.name.trim()
       ? data.name.trim()
       : archivo.name.replace(/\.json$/i, "");
-    abrirProyecto({ id: pedirId(), name: nombre, design });
+    abrirProyecto({ id: undefined, name: nombre, design });
     anunciar("Diseño importado");
   } catch (error) {
     window.alert("No se pudo importar el archivo:\n" + error.message);
@@ -296,7 +279,7 @@ function descargar(nombre, contenido, tipo) {
 /* ── motor ───────────────────────────────────────────────────────────────── */
 
 function compilar() {
-  state.resultado = compileFurniture(state.project.design);
+  state.resultado = compileFurniture(proyecto().design);
   return state.resultado;
 }
 
@@ -316,6 +299,39 @@ function asegurarVisor() {
     });
   }
   return visor3d;
+}
+
+/** Servicios que la capa de comandos puede usar para la vista. */
+function serviciosDeComandos() {
+  return {
+    get visor() {
+      return visor3d;
+    },
+    fijarVista: (pedido) => aplicarVistaPedida(pedido),
+    capturarVista: () => refs.canvas3d.toDataURL("image/png"),
+  };
+}
+
+/** Aplica un pedido de vista (viene del comando `fijar_vista`). */
+function aplicarVistaPedida(pedido) {
+  if (pedido.modo) {
+    state.vista3d = pedido.modo === "3d";
+    storage.guardarVista3d(state.vista3d);
+    aplicarVista();
+  }
+  if (pedido.medidas) {
+    state.medidas = pedido.medidas;
+    refs.selMedidas.value = pedido.medidas;
+    if (state.medidas === "sin") {
+      ocultarTooltip();
+      asegurarVisor().setResaltada(null);
+    }
+    renderMedidas(asegurarVisor().vista);
+  }
+  if (pedido.frentes !== undefined) {
+    refs.chkFrentes.checked = pedido.frentes;
+    asegurarVisor().setMostrarFrentes(pedido.frentes);
+  }
 }
 
 /* ── medidas sobre el modelo ─────────────────────────────────────────────── */
@@ -346,7 +362,6 @@ function renderMedidas(vista) {
     return nodo;
   };
 
-  // cotas generales: usan las medidas del motor (no los extremos de las piezas)
   const medidas = state.resultado?.bounds ?? {
     width: vista.max.x - vista.min.x,
     height: vista.max.y - vista.min.y,
@@ -371,7 +386,6 @@ function renderMedidas(vista) {
     crearCota(`fondo ${metros(medidas.depth)} m`, (fondo?.x ?? 0) + 42, (fondo?.y ?? 0) + 10, false),
   );
 
-  // medidas de cada pieza (se acomodan para no superponerse)
   if (state.medidas === "todas") {
     const entradas = [];
     for (const pieza of vista.piezas) {
@@ -414,7 +428,6 @@ function renderMedidas(vista) {
   capa.replaceChildren(...nodos.filter(Boolean));
 }
 
-/** Muestra el cartelito con las medidas de la pieza bajo el mouse. */
 function mostrarTooltip(parte, x, y) {
   if (state.medidas === "sin") {
     ocultarTooltip();
@@ -460,13 +473,6 @@ function aplicarVista() {
 
 const tarjetaVista = refs.diagrama.closest(".canvas-card");
 
-/** Abre o cierra puertas y cajones con animación. */
-function alternarApertura(abrir) {
-  const hayAbiertos = Number(refs.canvas3d.dataset.abiertos ?? 0) > 0;
-  const valor = abrir ?? !hayAbiertos;
-  asegurarVisor().setApertura(valor ? 1 : 0);
-}
-
 function pantallaCompleta(activar) {
   const activa = activar ?? !tarjetaVista.classList.contains("pantalla-completa");
   tarjetaVista.classList.toggle("pantalla-completa", activa);
@@ -484,16 +490,16 @@ function renderTodo() {
   renderControles();
   renderConfig();
   renderSalidas();
+  actualizarBotonesHistorial();
 }
 
 function renderPlantillas() {
   mount(
     refs.listaPlantillas,
-    el("button", {
-      class: "chip",
-      type: "button",
-      onclick: abrirEnBlanco,
-    }, [el("strong", { text: "Empezar de cero" }), el("span", { text: "un cuerpo con puertas" })]),
+    el("button", { class: "chip", type: "button", onclick: abrirEnBlanco }, [
+      el("strong", { text: "Empezar de cero" }),
+      el("span", { text: "un cuerpo con puertas" }),
+    ]),
     TEMPLATES.map((template) =>
       el("button", {
         class: "chip",
@@ -515,32 +521,31 @@ function renderProyectos() {
     return;
   }
 
+  const actual = proyecto().id;
   mount(
     refs.listaProyectos,
-    proyectos.map((proyecto) =>
-      el("div", {
-        class: "project-item" + (proyecto.id === state.project.id ? " is-active" : ""),
-      }, [
+    proyectos.map((guardado) =>
+      el("div", { class: "project-item" + (guardado.id === actual ? " is-active" : "") }, [
         el("button", {
           class: "load",
           type: "button",
           onclick: () => abrirProyecto({
-            id: proyecto.id,
-            name: proyecto.name,
-            design: structuredClone(proyecto.design),
+            id: guardado.id,
+            name: guardado.name,
+            design: structuredClone(guardado.design),
           }),
         }, [
-          el("strong", { text: proyecto.name }),
-          el("span", { text: storage.fechaCorta(proyecto.updatedAt) }),
+          el("strong", { text: guardado.name }),
+          el("span", { text: storage.fechaCorta(guardado.updatedAt) }),
         ]),
         el("button", {
           class: "del",
           type: "button",
           title: "Borrar",
           onclick: () => {
-            if (!window.confirm(`¿Borrar "${proyecto.name}"?`)) return;
-            storage.borrarProyecto(proyecto.id);
-            if (proyecto.id === state.project.id) abrirEnBlanco();
+            if (!window.confirm(`¿Borrar "${guardado.name}"?`)) return;
+            storage.borrarProyecto(guardado.id);
+            if (guardado.id === proyecto().id) abrirEnBlanco();
             else renderProyectos();
           },
         }, "✕"),
@@ -559,7 +564,7 @@ function campoNumero({ valor, min, max, step, sufijo, onInput, ancho = 70 }) {
       oninput: (event) => {
         const n = numero(event.target.value, Number.NaN);
         if (!Number.isFinite(n)) return;
-        onInput(limitar(n, min, max));
+        onInput(Math.min(max, Math.max(min, n)));
       },
     }),
     sufijo ? el("em", { text: sufijo }) : null,
@@ -567,7 +572,7 @@ function campoNumero({ valor, min, max, step, sufijo, onInput, ancho = 70 }) {
 }
 
 function renderControles() {
-  const { columns } = state.project.design;
+  const { columns } = proyecto().design;
 
   mount(
     refs.controles,
@@ -577,26 +582,21 @@ function renderControles() {
         el("div", { class: "column-head" }, [
           el("strong", { text: `Columna ${columnIndex + 1}` }),
           campoNumero({
-            valor: column.width, min: 0.1, max: 2.5, step: 0.01, sufijo: "m",
+            valor: column.width,
+            min: LIMITES.anchoColumna.min,
+            max: LIMITES.anchoColumna.max,
+            step: 0.01,
+            sufijo: "m",
             ancho: 64,
-            onInput: (valor) => {
-              column.width = valor;
-              compilar();
-              renderSalidas();
-            },
+            onInput: (valor) =>
+              ejecutar("fijar_ancho_columna", { indice: columnIndex, ancho: valor }),
           }),
           el("span", { class: "column-total", text: `alto ${metros(alto)} m` }),
           el("button", {
-            class: "mini-btn danger", type: "button", title: "Eliminar columna",
-            onclick: () => {
-              if (columns.length === 1) {
-                anunciar("Tiene que haber al menos una columna");
-                return;
-              }
-              columns.splice(columnIndex, 1);
-              compilar();
-              renderTodo();
-            },
+            class: "mini-btn danger",
+            type: "button",
+            title: "Eliminar columna",
+            onclick: () => ejecutar("quitar_columna", { indice: columnIndex }, { refresco: "todo" }),
           }, "Eliminar"),
         ]),
 
@@ -608,38 +608,43 @@ function renderControles() {
           el("div", { class: "module-row" }, [
             el("select", {
               "aria-label": "Tipo de módulo",
-              onchange: (event) => {
-                mod.type = event.target.value;
-                if (mod.type === "drawer" && !mod.drawerCount) mod.drawerCount = 2;
-                compilar();
-                renderTodo();
-              },
+              onchange: (evento) =>
+                ejecutar(
+                  "editar_modulo",
+                  { columna: columnIndex, modulo: moduleIndex, tipo: evento.target.value },
+                  { refresco: "todo" },
+                ),
             }, TIPOS_MODULO.map(([tipo, etiqueta]) =>
-              el("option", {
-                value: tipo,
-                selected: mod.type === tipo,
-                text: etiqueta,
-              })
+              el("option", { value: tipo, selected: mod.type === tipo, text: etiqueta })
             )),
 
             campoNumero({
-              valor: mod.height, min: 0.05, max: 3, step: 0.01, sufijo: "m alto",
-              onInput: (valor) => {
-                mod.height = valor;
-                compilar();
-                renderSalidas();
-              },
+              valor: mod.height,
+              min: LIMITES.altoModulo.min,
+              max: LIMITES.altoModulo.max,
+              step: 0.01,
+              sufijo: "m alto",
+              onInput: (valor) =>
+                ejecutar("editar_modulo", { columna: columnIndex, modulo: moduleIndex, alto: valor }),
             }),
 
             mod.type === "drawer"
               ? el("span", { class: "field" }, [
                   el("input", {
-                    type: "number", value: mod.drawerCount ?? 2, min: 1, max: 8, step: 1,
+                    type: "number",
+                    value: mod.drawerCount ?? 2,
+                    min: LIMITES.cajones.min,
+                    max: LIMITES.cajones.max,
+                    step: 1,
                     style: "width:52px",
-                    oninput: (event) => {
-                      mod.drawerCount = limitar(Math.round(numero(event.target.value, 2)), 1, 8);
-                      compilar();
-                      renderSalidas();
+                    oninput: (evento) => {
+                      const cajones = Math.round(numero(evento.target.value, Number.NaN));
+                      if (!Number.isFinite(cajones)) return;
+                      ejecutar("editar_modulo", {
+                        columna: columnIndex,
+                        modulo: moduleIndex,
+                        cajones,
+                      });
                     },
                   }),
                   el("em", { text: "cajones" }),
@@ -648,24 +653,30 @@ function renderControles() {
 
             el("div", { class: "row-actions" }, [
               el("button", {
-                class: "mini-btn", type: "button", title: "Quitar módulo",
-                onclick: () => {
-                  column.modules.splice(moduleIndex, 1);
-                  compilar();
-                  renderTodo();
-                },
+                class: "mini-btn",
+                type: "button",
+                title: "Quitar módulo",
+                onclick: () =>
+                  ejecutar(
+                    "quitar_modulo",
+                    { columna: columnIndex, modulo: moduleIndex },
+                    { refresco: "todo" },
+                  ),
               }, "✕"),
             ]),
           ])
         ),
 
         el("button", {
-          class: "add-btn", type: "button", style: "margin-top:7px",
-          onclick: () => {
-            column.modules.push({ id: idModulo(), type: "doors", height: 0.4 });
-            compilar();
-            renderTodo();
-          },
+          class: "add-btn",
+          type: "button",
+          style: "margin-top:7px",
+          onclick: () =>
+            ejecutar(
+              "agregar_modulo",
+              { columna: columnIndex, tipo: "doors", alto: 0.4 },
+              { refresco: "todo" },
+            ),
         }, "+ módulo"),
       ]);
     }),
@@ -673,7 +684,7 @@ function renderControles() {
 }
 
 function renderConfig() {
-  const config = withDefaults(state.project.design.config);
+  const config = withDefaults(proyecto().design.config);
   mount(
     refs.config,
     CAMPOS_CONFIG.map(([clave, etiqueta, min, max, step]) =>
@@ -684,15 +695,10 @@ function renderConfig() {
           type: "number",
           value: Number(config[clave]).toFixed(4).replace(/0+$/, "").replace(/\.$/, ""),
           min, max, step,
-          oninput: (event) => {
-            const valor = numero(event.target.value, Number.NaN);
+          oninput: (evento) => {
+            const valor = numero(evento.target.value, Number.NaN);
             if (!Number.isFinite(valor)) return;
-            state.project.design.config = {
-              ...(state.project.design.config ?? {}),
-              [clave]: limitar(valor, min, max),
-            };
-            compilar();
-            renderSalidas();
+            ejecutar("fijar_config", { valores: { [clave]: valor } });
           },
         }),
       ])
@@ -703,14 +709,12 @@ function renderConfig() {
 function renderSalidas() {
   const resultado = state.resultado ?? compilar();
 
-  // vista 2D (se dibuja siempre; el CSS decide cuál se ve)
-  const diagrama = renderDiagram(state.project.design);
+  const diagrama = renderDiagram(proyecto().design);
   mount(
     refs.lienzo2d,
     diagrama ?? el("p", { class: "vacio", text: "Agregá una columna para ver el mueble." }),
   );
 
-  // vista 3D
   const visor = asegurarVisor();
   visor.actualizar(resultado.parts);
   if (state.vista3d) requestAnimationFrame(() => visor.redimensionar());
@@ -841,53 +845,73 @@ function renderTablaMecanizados() {
   );
 }
 
+/** Habilita/deshabilita las acciones del menú que dependen del historial. */
+function actualizarBotonesHistorial() {
+  const deshacerBtn = document.querySelector('[data-accion="deshacer"]');
+  const rehacerBtn = document.querySelector('[data-accion="rehacer"]');
+  if (deshacerBtn) deshacerBtn.disabled = !state.sesion.puedeDeshacer;
+  if (rehacerBtn) rehacerBtn.disabled = !state.sesion.puedeRehacer;
+}
+
 /* ── eventos ─────────────────────────────────────────────────────────────── */
 
 function conectarEventos() {
   $("btn-guardar").addEventListener("click", guardarProyecto);
   $("btn-csv").addEventListener("click", exportarCsv);
-  $("btn-agregar-columna").addEventListener("click", () => {
-    state.project.design.columns.push({
-      width: 0.6,
-      modules: [{ id: idModulo(), type: "doors", height: 0.8 }],
-    });
-    compilar();
-    renderTodo();
-  });
 
-  refs.nombre.addEventListener("input", (event) => {
-    state.project.name = event.target.value.slice(0, 80) || "Sin título";
+  $("btn-agregar-columna").addEventListener("click", () =>
+    ejecutar(
+      "agregar_columna",
+      { ancho: 0.6, modulo: { tipo: "doors", alto: 0.8 } },
+      { refresco: "todo" },
+    ),
+  );
+
+  // el nombre se confirma al salir del campo (Enter/blur), no en cada tecla
+  refs.nombre.addEventListener("change", (evento) => {
+    const respuesta = ejecutar("renombrar_proyecto", { nombre: evento.target.value }, { refresco: "ninguno" });
+    if (!respuesta.ok) {
+      refs.nombre.value = proyecto().name;
+      return;
+    }
+    refs.nombre.value = proyecto().name;
     autoguardar();
+  });
+  refs.nombre.addEventListener("keydown", (evento) => {
+    if (evento.key === "Enter") refs.nombre.blur();
   });
 
   // Menú de acciones
   const botonMenu = $("btn-menu");
-  botonMenu.addEventListener("click", (event) => {
-    event.stopPropagation();
+  botonMenu.addEventListener("click", (evento) => {
+    evento.stopPropagation();
     const abierto = refs.menu.hidden;
     refs.menu.hidden = !abierto;
     botonMenu.setAttribute("aria-expanded", String(abierto));
+    actualizarBotonesHistorial();
   });
-  document.addEventListener("click", (event) => {
-    if (!refs.menu.hidden && !refs.menu.contains(event.target) && event.target !== botonMenu) {
+  document.addEventListener("click", (evento) => {
+    if (!refs.menu.hidden && !refs.menu.contains(evento.target) && evento.target !== botonMenu) {
       refs.menu.hidden = true;
       botonMenu.setAttribute("aria-expanded", "false");
     }
   });
-  refs.menu.addEventListener("click", (event) => {
-    const accion = event.target.closest("[data-accion]")?.dataset.accion;
+  refs.menu.addEventListener("click", (evento) => {
+    const accion = evento.target.closest("[data-accion]")?.dataset.accion;
     if (!accion) return;
     refs.menu.hidden = true;
     botonMenu.setAttribute("aria-expanded", "false");
     if (accion === "json") exportarJson();
     if (accion === "importar") $("archivo-importar").click();
+    if (accion === "deshacer") deshacer();
+    if (accion === "rehacer") rehacer();
     if (accion === "borrar-proyecto") borrarProyectoActual();
   });
 
-  $("archivo-importar").addEventListener("change", (event) => {
-    const archivo = event.target.files?.[0];
+  $("archivo-importar").addEventListener("change", (evento) => {
+    const archivo = evento.target.files?.[0];
     if (archivo) importarJson(archivo);
-    event.target.value = "";
+    evento.target.value = "";
   });
 
   for (const tab of document.querySelectorAll(".tab:not(.tab-vista)")) {
@@ -901,28 +925,27 @@ function conectarEventos() {
   }
 
   for (const tab of refs.tabsVista) {
-    tab.addEventListener("click", () => {
-      state.vista3d = tab.dataset.vista3d === "3d";
-      storage.guardarVista3d(state.vista3d);
-      aplicarVista();
-    });
+    tab.addEventListener("click", () =>
+      ejecutar(
+        "fijar_vista",
+        { modo: tab.dataset.vista3d },
+        { refresco: "ninguno" },
+      ),
+    );
   }
 
-  refs.chkFrentes.addEventListener("change", (evento) => {
-    asegurarVisor().setMostrarFrentes(evento.target.checked);
+  refs.chkFrentes.addEventListener("change", (evento) =>
+    ejecutar("fijar_vista", { frentes: evento.target.checked }, { refresco: "ninguno" }),
+  );
+
+  refs.btnAbrir.addEventListener("click", () => {
+    const hayAbiertos = Number(refs.canvas3d.dataset.abiertos ?? 0) > 0;
+    ejecutar("abrir_todo", { abierto: !hayAbiertos }, { refresco: "ninguno" });
   });
 
-  refs.btnAbrir.addEventListener("click", () => alternarApertura());
-
-  // medidas: selector y hover sobre el 3D
-  refs.selMedidas.addEventListener("change", (evento) => {
-    state.medidas = evento.target.value;
-    if (state.medidas === "sin") {
-      ocultarTooltip();
-      asegurarVisor().setResaltada(null);
-    }
-    renderMedidas(asegurarVisor().vista);
-  });
+  refs.selMedidas.addEventListener("change", (evento) =>
+    ejecutar("fijar_vista", { medidas: evento.target.value }, { refresco: "ninguno" }),
+  );
 
   refs.canvas3d.addEventListener("pointermove", (evento) => {
     if (!state.vista3d || state.medidas === "sin") return;
@@ -949,6 +972,13 @@ function conectarEventos() {
   refs.btnPantalla.addEventListener("click", () => pantallaCompleta());
 
   document.addEventListener("keydown", (evento) => {
+    const enCampo = ["INPUT", "SELECT", "TEXTAREA"].includes(evento.target?.tagName);
+    if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === "z" && !enCampo) {
+      evento.preventDefault();
+      if (evento.shiftKey) rehacer();
+      else deshacer();
+      return;
+    }
     if (evento.key === "Escape" && tarjetaVista.classList.contains("pantalla-completa")) {
       pantallaCompleta(false);
     }
@@ -959,17 +989,20 @@ function conectarEventos() {
 
 function arrancar() {
   const guardado = storage.leerActual();
-  let proyecto;
+  let inicial;
   try {
-    proyecto = guardado
-      ? { id: guardado.id ?? pedirId(), name: guardado.name ?? "Proyecto", design: normalizarDiseno(guardado.design) }
-      : proyectoDePlantilla(TEMPLATES[0]);
+    inicial = guardado
+      ? { id: guardado.id, name: guardado.name, design: normalizarDiseno(guardado.design) }
+      : proyectoDesdePlantilla(TEMPLATES[0]);
   } catch {
-    proyecto = proyectoDePlantilla(TEMPLATES[0]);
+    inicial = proyectoDesdePlantilla(TEMPLATES[0]);
   }
 
-  state.project = proyecto;
-  refs.nombre.value = proyecto.name;
+  state.sesion = crearSesion({
+    estadoInicial: inicial,
+    servicios: serviciosDeComandos(),
+  });
+  refs.nombre.value = proyecto().name;
 
   if (!storage.hayAlmacenamiento()) {
     anunciar("Sin almacenamiento local: los cambios no se guardarán al cerrar");

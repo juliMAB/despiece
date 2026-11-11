@@ -2,8 +2,8 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.4 — editor web + visor 3D interactivo con medidas**.
-> Próximo hito: **modo agente** (API local + MCP) — plan en [docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md).
+> Estado: **v0.5-F1 — capa de comandos + undo** (base del modo agente).
+> Próximo hito: **F2 — servidor local + WebSocket** (plan en [docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md)).
 > Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
@@ -104,8 +104,11 @@ src/
     config.js       parámetros de fabricación y precisión (1 mm)
     compile.js      diseño → piezas, mecanizados, avisos
     cutlist.js      agrupado, resumen y CSV
+  app/              capa de comandos (la puerta de entrada para editar)
+    design.js       modelo, normalización y límites del diseño
+    commands.js     catálogo de comandos + sesión con historial (undo/redo)
   ui/               editor (sin frameworks)
-    app.js          lógica y eventos
+    app.js          lógica y eventos (dispara comandos)
     render2d.js     diagrama 2D con cotas
     render3d.js     visor 3D en canvas (rotar, zoom, ocultar frentes)
     geometry3d.js   cámara, proyección, caras y sombreado (puro y testeable)
@@ -123,8 +126,8 @@ El motor y la geometría 3D no dependen del navegador: se usan igual en Node o e
 ## Tests
 
 ```bash
-npm test          # 85 tests: motor, despiece, plantillas, geometría, matrices, animación y picking
-npm run ui-check  # 30 verificaciones de la interfaz con Chrome (visor 3D, apertura y medidas)
+npm test          # 135 tests: motor, despiece, plantillas, geometría 3D y capa de comandos
+npm run ui-check  # 37 verificaciones de la interfaz con Chrome (3D, medidas, comandos y undo)
 ```
 
 El motor fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
@@ -139,8 +142,8 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.3.1 | Visor sobre WebGL 2 con z-buffer real, paleta por tipo de pieza y pantalla completa | ✅ |
 | v0.3.2 | Abrir puertas y cajones con animación | ✅ |
 | v0.4 | Abrir cada puerta/cajón con un click y medidas sobre el modelo (cotas y hover) | ✅ |
-| v0.5-F1 | **Modo agente:** capa de comandos + undo (en la app) | 🚧 próximo |
-| v0.5-F2 | Servidor local con WebSocket + endpoints HTTP | ⏳ |
+| v0.5-F1 | **Modo agente:** capa de comandos + undo (en la app) | ✅ |
+| v0.5-F2 | Servidor local con WebSocket + endpoints HTTP | 🚧 próximo |
 | v0.5-F3 | Adaptador MCP (stdio) para agentes de escritorio | ⏳ |
 | v0.5-F4 | Modo agente en la UI (indicador, log, resaltado, desconectar) | ⏳ |
 | v0.6 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |

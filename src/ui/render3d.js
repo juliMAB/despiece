@@ -638,6 +638,23 @@ export function crearVisor3D(canvas, opciones = {}) {
     },
     /** Abre (1) o cierra (0) todo, con animación. */
     setApertura,
+    /** Abre/cierra un grupo puntual con un valor entre 0 y 1. */
+    setAperturaGrupo(grupo, valor) {
+      if (!grupo) return;
+      objetivos.set(grupo, Math.max(0, Math.min(1, Number(valor) || 0)));
+      animar();
+    },
+    /** Apertura actual de un grupo (0 a 1). */
+    getAperturaGrupo(grupo) {
+      return aperturas.get(grupo) ?? 0;
+    },
+    /** Mueve la cámara directamente. */
+    setCamara({ yaw, pitch, zoom }) {
+      if (Number.isFinite(yaw)) estado.yaw = yaw;
+      if (Number.isFinite(pitch)) estado.pitch = Math.max(-1.45, Math.min(1.45, pitch));
+      if (Number.isFinite(zoom)) estado.zoom = Math.max(0.35, Math.min(4, zoom));
+      dibujar();
+    },
     alternarGrupo,
     piezaEnPixel,
     alternarPiezaEnPixel,

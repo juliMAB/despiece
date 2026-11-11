@@ -123,6 +123,75 @@ async function main() {
   check("hay despiece inicial", filasIniciales > 0, `${filasIniciales} líneas`);
   await shot("ui-1-inicial.png");
 
+  /* ── capa de comandos: undo / rehacer ─────────────────────────────────── */
+
+  const medidasTexto = () => evaluate("document.querySelector('#medidas-exteriores').textContent");
+  const anchoColumna = () => evaluate("document.querySelector('.column-head .field input').value");
+  const teclaUndo = (shift = false) =>
+    evaluate(`
+      document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'z', ctrlKey: true, shiftKey: ${shift}, bubbles: true
+      }))
+    `);
+
+  await evaluate(`
+    (() => {
+      const input = document.querySelector('.column-head .field input');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(input, '0.9');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()
+  `);
+  await sleep(450);
+  check("editar el ancho actualiza el mueble", (await medidasTexto()).includes("0,900"));
+
+  await teclaUndo();
+  await sleep(550);
+  check(
+    "Ctrl+Z deshace el cambio de ancho",
+    (await medidasTexto()).includes("0,600") && (await anchoColumna()) === "0.6",
+    `medidas: ${await medidasTexto()}`,
+  );
+
+  await teclaUndo(true);
+  await sleep(550);
+  check("Ctrl+Shift+Z rehace el cambio", (await medidasTexto()).includes("0,900"));
+
+  await teclaUndo();
+  await sleep(450);
+
+  // agregar columna y deshacer
+  await evaluate(`document.querySelector('#btn-agregar-columna').click()`);
+  await sleep(450);
+  check(
+    "agregar columna crea otra",
+    (await evaluate(`document.querySelectorAll('.column-card').length`)) === 2,
+  );
+  await teclaUndo();
+  await sleep(550);
+  check(
+    "Ctrl+Z quita la columna agregada",
+    (await evaluate(`document.querySelectorAll('.column-card').length`)) === 1,
+  );
+  await teclaUndo(true);
+  await sleep(550);
+  check(
+    "Ctrl+Shift+Z la vuelve a agregar",
+    (await evaluate(`document.querySelectorAll('.column-card').length`)) === 2,
+  );
+  await teclaUndo();
+  await sleep(450);
+  check(
+    "el menú tiene Deshacer y Rehacer",
+    await evaluate(`
+      (() => {
+        const menu = document.querySelector('#menu-panel');
+        return !!menu.querySelector('[data-accion="deshacer"]') && !!menu.querySelector('[data-accion="rehacer"]');
+      })()
+    `),
+  );
+
   /* ── visor 3D ─────────────────────────────────────────────────────────── */
 
   // Cuenta píxeles no vacíos copiando el canvas (sirve para WebGL y para 2D).
@@ -397,6 +466,7 @@ async function main() {
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
       setter.call(input, ${JSON.stringify(nombre)});
       input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
       document.querySelector('#btn-guardar').click();
       return true;
     })()

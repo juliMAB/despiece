@@ -130,6 +130,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border-radius: 7px;
 }
 .menu-panel button:hover { background: #23201e; }
+.menu-panel button:disabled { opacity: 0.35; cursor: default; }
+.menu-panel button:disabled:hover { background: none; }
 .menu-panel hr { border: 0; border-top: 1px solid var(--line); margin: 5px 2px; }
 .menu-panel .danger { color: var(--danger); }
 

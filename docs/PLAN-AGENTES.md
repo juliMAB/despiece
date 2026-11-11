@@ -1,7 +1,6 @@
 # Plan: modo agente (API local + MCP)
 
-> **Estado:** aprobado, pendiente de implementación.
-> **Fecha:** 2026-11-11.
+> **Estado:** **F1 implementado** (2026-11-11). F2 (servidor local + WebSocket) es el próximo paso.
 > **Decisión del usuario:** sí al modo agente; **no** a la optimización de corte (el carpintero se encarga del nesting).
 
 Este documento es el contrato de trabajo del "modo agente" de Despiece. Define qué se construye, qué no, cómo se comunican las partes y cuándo se considera terminado cada paso. Si algo no está acá, no está en el alcance hasta que se actualice este archivo.
@@ -254,13 +253,22 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8790/api/comando `
 
 ## 7. Fases y criterios de aceptación
 
-### F1 — Capa de comandos + undo (en la app)
-**Entrega:** `src/app/commands.js` + historial + UI usando esa capa.
+### F1 — Capa de comandos + undo (en la app) ✅
+**Entrega:** `src/app/design.js` (modelo y normalización), `src/app/commands.js` (catálogo + `crearSesion`), UI usando la capa, Ctrl+Z/Ctrl+Shift+Z y menú Deshacer/Rehacer.
 **Aceptación:**
-- Todos los comandos del catálogo §4.2 implementados y testeados en Node.
-- La UI no muta el estado directamente: pasa por `aplicarComando`.
-- Ctrl+Z / Ctrl+Shift+Z funcionan y están testeados.
-- Tests: al menos uno por comando, más casos de error.
+- ✅ Todos los comandos del catálogo §4.2 implementados y testeados en Node (`test/commands.test.js`).
+- ✅ La UI no muta el diseño directamente: todos los cambios pasan por `aplicarComando`/`crearSesion`.
+- ✅ Ctrl+Z / Ctrl+Shift+Z funcionan y están testeados (unitarios + UI automatizada).
+- ✅ Tests: 50 nuevos (135 en total).
+
+**Notas de implementación:**
+- `crearSesion({ estadoInicial, servicios })` devuelve `{ aplicar(nombre, args), estado, revision, reiniciar, puedeDeshacer, puedeRehacer }`.
+- Los servicios que recibe son `{ visor?, fijarVista?, capturarVista? }`; sin ellos los comandos de vista/captura devuelven `sin_visor` con sugerencia accionable.
+- Se agregó `agregar_columna({ modulo? })` para que la UI pueda crear la columna con un módulo en un solo paso.
+- Se agregó `obtener_comandos` para que un agente descubra el catálogo.
+- `deshacer`/`rehacer` son operaciones de la sesión (también aceptadas por nombre en `aplicar`) y no están en el catálogo público de diseño.
+- El nombre del proyecto se confirma con `change` (blur/Enter), no en cada tecla, para no llenar el historial de mini-pasos.
+- La vista (2D/3D, medidas, frentes, apertura, cámara) va por `fijar_vista` / `abrir_todo` / `alternar_apertura` / `mover_camara` / `reiniciar_camara` pero **no** entra al historial.
 
 ### F2 — Servidor local + WebSocket
 **Entrega:** `dev/agent-server.mjs` (`npm run agent`), modo agente en la página, endpoints HTTP.
