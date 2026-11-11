@@ -18,9 +18,16 @@ const MAXIMO_REINTENTOS = 5;
  *   obtenerEstado: () => { revision: number, design: object, resumen: object, avisos: object[] },
  *   capturar: () => Promise<string> | string,
  *   alEstadoConexion?: (estado: "conectando"|"conectado"|"reconectando"|"desconectado") => void,
+ *   alActividad?: (estado: "editando"|"libre", comando?: string) => void,
  * }} opciones
  */
-export function conectarAgente({ aplicar, obtenerEstado, capturar, alEstadoConexion }) {
+export function conectarAgente({
+  aplicar,
+  obtenerEstado,
+  capturar,
+  alEstadoConexion,
+  alActividad,
+}) {
   const config = globalThis.__DESPIECE_AGENTE__;
   if (!config?.token) return null;
 
@@ -66,18 +73,24 @@ export function conectarAgente({ aplicar, obtenerEstado, capturar, alEstadoConex
     if (!mensaje || typeof mensaje.type !== "string") return;
 
     if (mensaje.type === "comando") {
-      let respuesta;
-      try {
-        respuesta = aplicar(mensaje.nombre, mensaje.argumentos ?? {});
-      } catch (error) {
-        respuesta = {
-          ok: false,
-          revision: null,
-          error: { codigo: "error_pagina", mensaje: error.message ?? "Error al aplicar el comando." },
-        };
-      }
-      enviar({ type: "resultado", id: mensaje.id, ...respuesta });
-      if (respuesta.ok) enviarEstado();
+      // Se avisa "editando" y se aplica en el próximo frame: así la interfaz
+      // llega a pintar el estado antes de que el comando cambie el mueble.
+      alActividad?.("editando", mensaje.nombre);
+      requestAnimationFrame(() => {
+        let respuesta;
+        try {
+          respuesta = aplicar(mensaje.nombre, mensaje.argumentos ?? {});
+        } catch (error) {
+          respuesta = {
+            ok: false,
+            revision: null,
+            error: { codigo: "error_pagina", mensaje: error.message ?? "Error al aplicar el comando." },
+          };
+        }
+        enviar({ type: "resultado", id: mensaje.id, ...respuesta });
+        if (respuesta.ok) enviarEstado();
+        alActividad?.("libre");
+      });
       return;
     }
 
@@ -143,6 +156,11 @@ export function conectarAgente({ aplicar, obtenerEstado, capturar, alEstadoConex
     enviarEstado,
     get conectado() {
       return abierta();
+    },
+    reconectar() {
+      cerrado = false;
+      reintentos = 0;
+      conectar();
     },
     desconectar() {
       cerrado = true;

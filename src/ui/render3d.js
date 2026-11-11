@@ -88,16 +88,27 @@ function calcularVista(estado, ancho, alto, aperturaDeParte) {
     fovDeg: FOV,
   });
 
-  return { piezas, cajas, camara, min, max, radio, ancho, alto, resaltada: estado.resaltada };
+  return { piezas, cajas, camara, min, max, radio, ancho, alto, resaltada: estado.resaltada, resaltadas: estado.resaltadas };
 }
 
-/** Color RGB (0..1) de una pieza, aclarado si está resaltada. */
-function colorRgb(caja, resaltada) {
+/** Color RGB (0..1) de una pieza: resalta la del mouse y las que tocó el agente. */
+function colorRgb(caja, vista) {
   const base = hexARgb(PALETA_3D[caja.role] ?? PALETA_3D.group);
-  const esResaltada = resaltada && caja.key === resaltada;
-  const factor = esResaltada ? 0.45 : 0;
-  const mezclar = (valor) => (valor + (255 - valor) * factor) / 255;
-  return [mezclar(base.r), mezclar(base.g), mezclar(base.b)];
+  const mezcla = (a, b, t) => (a + (b - a) * t) / 255;
+
+  if (vista.resaltada === caja.key) {
+    return [mezcla(base.r, 255, 0.45), mezcla(base.g, 255, 0.45), mezcla(base.b, 255, 0.45)];
+  }
+  if (vista.resaltadas?.has(caja.key)) {
+    // celeste: piezas que cambiaron con el último comando del agente
+    const acento = hexARgb("#38bdf8");
+    return [
+      mezcla(base.r, acento.r, 0.55),
+      mezcla(base.g, acento.g, 0.55),
+      mezcla(base.b, acento.b, 0.55),
+    ];
+  }
+  return [base.r / 255, base.g / 255, base.b / 255];
 }
 
 /** Aplica una transformación a un vértice. */
@@ -236,7 +247,7 @@ function crearBackendWebGL(canvas, gl) {
     const normales = [];
     const colores = [];
     for (const { caja, transformacion } of vista.piezas) {
-      const color = colorRgb(caja, vista.resaltada);
+      const color = colorRgb(caja, vista);
       for (const cara of CARAS) {
         const normal = transformarNormal(cara.normal, transformacion);
         const vertices = cara.vertices.map((relativo) =>
@@ -346,7 +357,7 @@ function crearBackendCanvas2D(canvas) {
 
     const caras = [];
     for (const { caja, transformacion } of vista.piezas) {
-      const [r, g, b] = colorRgb(caja, vista.resaltada);
+      const [r, g, b] = colorRgb(caja, vista);
       for (const cara of CARAS) {
         const normal = transformarNormal(cara.normal, transformacion);
         const centro = transformarVertice(centroDeCara(caja, cara.normal), transformacion);
@@ -409,6 +420,7 @@ export function crearVisor3D(canvas, opciones = {}) {
     zoom: VISTA_INICIAL.zoom,
     mostrarFrentes: opciones.mostrarFrentes ?? true,
     resaltada: null,
+    resaltadas: new Set(),
     arrastrando: false,
     ultimoX: 0,
     ultimoY: 0,
@@ -431,6 +443,7 @@ export function crearVisor3D(canvas, opciones = {}) {
 
   const backend = gl ? crearBackendWebGL(canvas, gl) : crearBackendCanvas2D(canvas);
   canvas.dataset.renderer = gl ? "webgl2" : "canvas2d";
+  canvas.dataset.resaltadas = "0";
 
   let pedido = 0;
   let animacion = 0;
@@ -634,6 +647,23 @@ export function crearVisor3D(canvas, opciones = {}) {
       const nueva = clave ?? null;
       if (estado.resaltada === nueva) return;
       estado.resaltada = nueva;
+      dibujar();
+    },
+    /** Resalta varias piezas (las que cambió el agente). */
+    setResaltadas(claves) {
+      const nuevas = new Set(Array.isArray(claves) ? claves : []);
+      const iguales =
+        nuevas.size === estado.resaltadas.size &&
+        [...nuevas].every((clave) => estado.resaltadas.has(clave));
+      if (iguales) return;
+      estado.resaltadas = nuevas;
+      canvas.dataset.resaltadas = String(estado.resaltadas.size);
+      dibujar();
+    },
+    limpiarResaltadas() {
+      if (estado.resaltadas.size === 0) return;
+      estado.resaltadas = new Set();
+      canvas.dataset.resaltadas = "0";
       dibujar();
     },
     /** Abre (1) o cierra (0) todo, con animación. */

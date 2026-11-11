@@ -32,6 +32,7 @@ import { renderDiagram } from "./render2d.js";
 import { crearVisor3D } from "./render3d.js";
 import { proyectarPunto } from "./geometry3d.js";
 import { crearSesion } from "../app/commands.js";
+import { clavesCambiadas } from "../app/diff.js";
 import { conectarAgente } from "./agent.js";
 import {
   LIMITES,
@@ -65,6 +66,8 @@ const CAMPOS_CONFIG = [
 const state = {
   sesion: null, // capa de comandos + historial
   agente: null, // cliente del modo agente (si la página la sirve el servidor)
+  agenteConexion: "desconectado", // estado de la conexión con el servidor
+  agenteLog: [], // últimos comandos que aplicó el agente
   resultado: null, // salida del motor
   vista: "despiece", // despiece | mecanizados
   vista3d: storage.leerVista3d(), // true = 3D, false = 2D
@@ -81,6 +84,11 @@ const refs = {
   listaPlantillas: $("lista-plantillas"),
   listaProyectos: $("lista-proyectos"),
   agente: $("estado-agente"),
+  agentePanel: $("agente-panel"),
+  agenteLog: $("agente-log"),
+  agenteEstadoLinea: $("agente-estado-linea"),
+  btnAgenteConectar: $("btn-agente-conectar"),
+  btnAgenteDesconectar: $("btn-agente-desconectar"),
   diagrama: $("diagrama"),
   lienzo2d: document.querySelector("#diagrama .diagram-2d"),
   canvas3d: document.querySelector("#diagrama .diagram-3d"),
@@ -341,17 +349,92 @@ function aplicarVistaPedida(pedido) {
 
 /* ── modo agente ─────────────────────────────────────────────────────────── */
 
-/** Aplica un comando que llega del agente: refresca la UI y avisa al servidor. */
+const MAXIMO_LOG_AGENTE = 14;
+let temporizadorResaltado = null;
+
+/** Aplica un comando que llega del agente: refresca la UI, resalta y registra. */
 function aplicarComandoAgente(nombre, argumentos) {
   const revisionAntes = state.sesion.revision;
+  const partesAntes = state.resultado?.parts ?? [];
   const respuesta = state.sesion.aplicar(nombre, argumentos);
+
   if (respuesta.ok && state.sesion.revision !== revisionAntes) {
     refs.nombre.value = proyecto().name;
     compilar();
     renderTodo();
     storage.guardarActual(proyecto());
+    const cambiadas = resaltarCambiosDelAgente(partesAntes, state.resultado.parts);
+    registrarLogAgente({
+      nombre,
+      ok: true,
+      detalle: cambiadas > 0 ? `${cambiadas} piezas` : "sin cambios visibles",
+    });
+  } else if (!respuesta.ok) {
+    registrarLogAgente({ nombre, ok: false, detalle: respuesta.error?.codigo ?? "error" });
+  } else {
+    registrarLogAgente({ nombre, ok: true, detalle: "consulta/vista" });
   }
+
   return respuesta;
+}
+
+/** Resalta en el 3D las piezas que cambiaron y lo limpia a los segundos. */
+function resaltarCambiosDelAgente(partesAntes, partesDespues) {
+  let cambiadas = [];
+  try {
+    cambiadas = clavesCambiadas(partesAntes, partesDespues);
+  } catch {
+    return 0;
+  }
+  if (cambiadas.length === 0) return 0;
+
+  const visor = asegurarVisor();
+  visor.setResaltadas(cambiadas);
+  clearTimeout(temporizadorResaltado);
+  temporizadorResaltado = setTimeout(() => visor.limpiarResaltadas(), 8000);
+  return cambiadas.length;
+}
+
+/** Agrega una entrada al log del panel y lo dibuja. */
+function registrarLogAgente(entrada) {
+  const ahora = new Date();
+  state.agenteLog.unshift({
+    hora: ahora.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    nombre: String(entrada.nombre ?? "evento").replace(/_/g, " "),
+    ok: Boolean(entrada.ok),
+    detalle: entrada.detalle ?? "",
+  });
+  state.agenteLog = state.agenteLog.slice(0, MAXIMO_LOG_AGENTE);
+  renderLogAgente();
+  actualizarLineaAgente();
+}
+
+function renderLogAgente() {
+  mount(
+    refs.agenteLog,
+    state.agenteLog.map((entrada) =>
+      el("li", { class: entrada.ok ? "" : "is-error" }, [
+        el("time", { text: entrada.hora }),
+        el("span", {}, [
+          el("b", { text: entrada.nombre }),
+          entrada.detalle ? document.createTextNode(" · " + entrada.detalle) : null,
+        ]),
+      ])
+    ),
+  );
+}
+
+function actualizarLineaAgente() {
+  const etiquetas = {
+    conectando: "Conectando con el servidor local…",
+    conectado: "Conectado a la app",
+    reconectando: "Reconectando…",
+    desconectado: "Sin conexión",
+  };
+  refs.agenteEstadoLinea.textContent =
+    `${etiquetas[state.agenteConexion] ?? state.agenteConexion} · revisión ${state.sesion.revision}`;
+  refs.btnAgenteDesconectar.hidden = state.agenteConexion === "desconectado";
+  refs.btnAgenteConectar.hidden = state.agenteConexion !== "desconectado";
 }
 
 /** Captura PNG para que el agente "vea" el mueble (fuerza la vista 3D). */
@@ -361,22 +444,57 @@ async function capturarParaAgente() {
   return refs.canvas3d.toDataURL("image/png");
 }
 
+/** Actualiza el badge del encabezado (conexión y actividad del agente). */
 function actualizarBadgeAgente(estadoConexion) {
-  const etiquetas = {
-    conectando: "Conectando agente…",
-    conectado: "Agente conectado",
-    reconectando: "Agente reconectando…",
-    desconectado: "Agente desconectado",
-  };
-  refs.agente.textContent = etiquetas[estadoConexion] ?? estadoConexion;
-  refs.agente.className = "agente-badge is-" + estadoConexion;
+  if (estadoConexion) state.agenteConexion = estadoConexion;
+
+  if (state.agenteConexion === "editando") {
+    refs.agente.textContent = "Agente editando…";
+    refs.agente.className = "agente-badge is-editando";
+  } else {
+    const etiquetas = {
+      conectando: "Conectando agente…",
+      conectado: "Agente conectado",
+      reconectando: "Agente reconectando…",
+      desconectado: "Agente desconectado",
+    };
+    refs.agente.textContent = etiquetas[state.agenteConexion] ?? state.agenteConexion;
+    refs.agente.className = "agente-badge is-" + state.agenteConexion;
+  }
   refs.agente.hidden = false;
+  actualizarLineaAgente();
+
+  if (estadoConexion === "conectado") registrarLogAgente({ nombre: "Conectado", ok: true });
+  if (estadoConexion === "desconectado") registrarLogAgente({ nombre: "Desconectado", ok: false });
+}
+
+/** Marca actividad del agente mientras aplica un comando. */
+function actualizarActividadAgente(estadoActividad, comando) {
+  if (estadoActividad === "editando") {
+    state.agenteConexion = "editando";
+    refs.agente.textContent = comando ? `Agente: ${String(comando).replace(/_/g, " ")}…` : "Agente editando…";
+    refs.agente.className = "agente-badge is-editando";
+    return;
+  }
+  state.agenteConexion = state.agente?.conectado ? "conectado" : "desconectado";
+  actualizarBadgeAgente();
+}
+
+function alternarPanelAgente(abrir) {
+  const abierto = abrir ?? refs.agentePanel.hidden;
+  refs.agentePanel.hidden = !abierto;
+  refs.agente.setAttribute("aria-expanded", String(abierto));
+  if (abierto) {
+    renderLogAgente();
+    actualizarLineaAgente();
+  }
 }
 
 /** Conecta con el servidor de agentes si esta página la sirve él. */
 function iniciarAgente() {
   const config = globalThis.__DESPIECE_AGENTE__;
   if (!config?.token) return;
+
   actualizarBadgeAgente("conectando");
   state.agente = conectarAgente({
     aplicar: aplicarComandoAgente,
@@ -388,6 +506,7 @@ function iniciarAgente() {
     }),
     capturar: capturarParaAgente,
     alEstadoConexion: actualizarBadgeAgente,
+    alActividad: actualizarActividadAgente,
   });
 }
 
@@ -1027,6 +1146,25 @@ function conectarEventos() {
   });
 
   refs.btnPantalla.addEventListener("click", () => pantallaCompleta());
+
+  // Modo agente: panel con log, desconectar y reconectar
+  refs.agente.addEventListener("click", (evento) => {
+    evento.stopPropagation();
+    alternarPanelAgente();
+  });
+  document.addEventListener("click", (evento) => {
+    if (refs.agentePanel.hidden) return;
+    if (refs.agentePanel.contains(evento.target) || evento.target === refs.agente) return;
+    alternarPanelAgente(false);
+  });
+  refs.btnAgenteDesconectar.addEventListener("click", () => {
+    state.agente?.desconectar();
+    alternarPanelAgente(false);
+  });
+  refs.btnAgenteConectar.addEventListener("click", () => {
+    state.agente?.reconectar();
+    alternarPanelAgente(false);
+  });
 
   document.addEventListener("keydown", (evento) => {
     const enCampo = ["INPUT", "SELECT", "TEXTAREA"].includes(evento.target?.tagName);

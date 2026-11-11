@@ -560,3 +560,62 @@ th.num { text-align: right; }
 .agente-badge.is-reconectando::before { background: #f59e0b; }
 .agente-badge.is-desconectado { color: #fca5a5; border-color: #7f1d1d; }
 .agente-badge.is-desconectado::before { background: #ef4444; }
+
+/* botón del badge y panel del modo agente */
+.agente-badge {
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+  line-height: inherit;
+}
+.agente-badge:hover { border-color: #57534e; }
+.agente-badge.is-editando { color: #bae6fd; border-color: #075985; }
+.agente-badge.is-editando::before { background: #38bdf8; animation: pulso-agente 0.9s ease-in-out infinite; }
+@keyframes pulso-agente {
+  50% { opacity: 0.2; }
+}
+
+.agente-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 18px;
+  width: 330px;
+  max-width: calc(100vw - 24px);
+  z-index: 40;
+  background: #141210;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+}
+.agente-panel[hidden] { display: none; }
+.agente-panel-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.agente-panel-head strong { font-size: 12px; letter-spacing: 0.02em; }
+.agente-linea { font-size: 11px; margin: 6px 0 8px; }
+.agente-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 190px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.agente-log:empty::after { content: "Sin actividad todavía."; color: var(--dim); font-size: 11px; }
+.agente-log li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  border-left: 2px solid #334155;
+  padding: 3px 8px;
+  background: #1a1917;
+  border-radius: 0 6px 6px 0;
+}
+.agente-log li.is-error { border-left-color: #b91c1c; }
+.agente-log li time { color: var(--dim); font-variant-numeric: tabular-nums; flex: none; }
+.agente-log li span { overflow: hidden; text-overflow: ellipsis; }
+.agente-log li b { color: var(--text); font-weight: 600; }
+.agente-nota { font-size: 10.5px; color: var(--dim); margin: 10px 0 0; }

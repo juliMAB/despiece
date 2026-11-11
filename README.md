@@ -2,8 +2,8 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.7-F3 — modo agente con HTTP, WebSocket y MCP**.
-> Próximo hito: **F4 — modo agente en la UI** (log de comandos, resaltado, desconectar).
+> Estado: **v0.8 — modo agente completo (F1 a F4)**: comandos, undo, servidor local, MCP y panel en la UI.
+> Próximo hito: **materiales y costos + PDF de planos**.
 > Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
@@ -37,7 +37,7 @@ Con `npm run agent` la app se abre en `8790`, se conecta sola y aparece el badge
 - **Exportar / importar diseño** en JSON.
 - **Guardado local**: proyectos en `localStorage`, sin cuentas ni servidores.
 - **5 plantillas** para arrancar (alacena, cómoda, placard, bajo mesada, biblioteca).
-- **Modo agente (opcional)**: con `npm run agent`, un agente o script puede editar el mueble en vivo por HTTP/WebSocket, deshacer y pedir capturas del 3D. Con `npm run mcp` el editor se expone como **servidor MCP** (26 herramientas) para Claude Desktop, Cursor, Codex y otros agentes. La app sigue siendo estática y sin backend si no usás este modo.
+- **Modo agente (opcional)**: con `npm run agent`, un agente o script puede editar el mueble en vivo por HTTP/WebSocket, deshacer y pedir capturas del 3D. Con `npm run mcp` el editor se expone como **servidor MCP** (26 herramientas) para Claude Desktop, Cursor, Codex y otros agentes. La app muestra un **panel con el log** de lo que hizo el agente, **resalta las piezas que cambió** y permite desconectarlo. La app sigue siendo estática y sin backend si no usás este modo.
 
 | Vista 3D rotada | Cómoda de 4 cajones en 3D |
 |---|---|
@@ -111,6 +111,7 @@ src/
   app/              capa de comandos (la puerta de entrada para editar)
     design.js       modelo, normalización y límites del diseño
     commands.js     catálogo de comandos + sesión con historial (undo/redo)
+    diff.js         comparación de piezas (para resaltar lo que tocó el agente)
   ui/               editor (sin frameworks)
     app.js          lógica y eventos (dispara comandos)
     agent.js        cliente del modo agente (WebSocket)
@@ -138,9 +139,9 @@ El motor y la geometría 3D no dependen del navegador: se usan igual en Node o e
 ## Tests
 
 ```bash
-npm test             # 172 tests: motor, despiece, plantillas, geometría 3D, comandos, servidor de agentes y MCP
+npm test             # 179 tests: motor, despiece, plantillas, geometría 3D, comandos, servidor de agentes, MCP y diff
 npm run ui-check     # 37 verificaciones de la interfaz con Chrome (3D, medidas, comandos y undo)
-npm run agent-check  # 20 verificaciones del modo agente y MCP con Chrome (HTTP → cambio en vivo, captura, seguridad)
+npm run agent-check  # 26 verificaciones del modo agente y MCP con Chrome (en vivo, captura, seguridad, log, desconexión)
 ```
 
 El motor fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
@@ -158,8 +159,8 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.5-F1 | **Modo agente:** capa de comandos + undo (en la app) | ✅ |
 | v0.6-F2 | Servidor local con WebSocket + endpoints HTTP + badge de conexión | ✅ |
 | v0.7-F3 | **Adaptador MCP (stdio)**: 26 herramientas y 3 recursos | ✅ |
-| v0.7-F4 | Modo agente en la UI (log de comandos, resaltado, desconectar) | 🚧 próximo |
-| v0.6 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |
+| v0.8-F4 | **Modo agente en la UI**: log de comandos, resaltado de cambios, desconectar/reconectar | ✅ |
+| v0.9 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |
 | v1.0 | Más tipos de mueble, historial de versiones, exportación a CNC | ⏳ |
 | — | **Publicación pública** (Pages, dominio, difusión) | ⏸ diferida |
 
@@ -212,6 +213,17 @@ El servidor MCP (`npm run mcp`) expone **26 herramientas** (una por comando, má
 ```
 
 Si no hay servidor de agentes corriendo, el MCP levanta uno embebido (la app sigue estando en el navegador; el token está en `.despiece-token`). Los errores vuelven como `isError` con una sugerencia concreta (`sin_pagina` → "Iniciá `npm run agent` y abrí la app").
+
+### En la interfaz
+
+Cuando el modo agente está activo, el encabezado muestra **● Agente conectado** y, al hacer click, se abre un panel con:
+
+- **Log de comandos**: hora, comando y qué cambió (o el código de error en rojo).
+- **Resaltado**: las piezas que tocó el último comando se pintan en celeste durante unos segundos.
+- **Aviso de actividad**: mientras el agente aplica un comando, el badge dice *"Agente editando…"* para que no te pise.
+- **Desconectar / Reconectar** el agente sin cerrar la app (Ctrl+Z sigue deshaciendo sus cambios).
+
+![Panel del modo agente con el log y las piezas resaltadas](docs/img/agente-4-log.png)
 
 ![Modo agente conectado](docs/img/agente-1-conectado.png)
 

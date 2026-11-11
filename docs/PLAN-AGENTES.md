@@ -1,6 +1,6 @@
 # Plan: modo agente (API local + MCP)
 
-> **Estado:** **F3 implementado** (2026-11-11). F4 (modo agente en la UI) es el próximo paso.
+> **Estado:** **modo agente completo — F1 a F4 implementadas** (2026-11-11).
 > **Decisión del usuario:** sí al modo agente; **no** a la optimización de corte (el carpintero se encarga del nesting).
 
 Este documento es el contrato de trabajo del "modo agente" de Despiece. Define qué se construye, qué no, cómo se comunican las partes y cuándo se considera terminado cada paso. Si algo no está acá, no está en el alcance hasta que se actualice este archivo.
@@ -323,11 +323,19 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8790/api/comando `
 }
 ```
 
-### F4 — Modo agente en la UI
-**Entrega:** indicador, log de comandos, resaltado de piezas tocadas, botón desconectar.
+### F4 — Modo agente en la UI ✅
+**Entrega:** panel del modo agente en el encabezado (log de comandos, estado, desconectar/reconectar), resaltado de las piezas que cambió el agente, aviso de actividad y comparación de piezas (`src/app/diff.js`).
 **Aceptación:**
-- El humano ve qué hizo el agente y puede deshacer cada paso.
-- Sin modo agente, la app no muestra nada nuevo y sigue siendo estática.
+- ✅ El humano ve qué hizo el agente (hora, comando, qué cambió) y puede deshacer cada paso (Ctrl+Z o `deshacer`).
+- ✅ Sin modo agente no se muestra nada nuevo: la app estática sigue igual (37/37 verificaciones de UI).
+
+**Notas de implementación:**
+- El badge del encabezado ahora es un botón: abre/cierra el panel (`#agente-panel`), con outside-click para cerrar.
+- Log en memoria, máximo 14 entradas: hora, comando con guiones bajos humanizados y detalle (`8 piezas`, `consulta/vista`, o el código de error). Los errores se marcan en rojo.
+- Resaltado: al aplicar un comando que cambia el diseño se comparan las piezas antes/después con `clavesCambiadas` (`src/app/diff.js`) y las que cambiaron se pintan en celeste (`setResaltadas`) durante 8 s. Se puede verificar con `canvas.dataset.resaltadas`.
+- Actividad: el cliente del agente avisa "editando" antes de aplicar y aplica en el próximo frame, así la interfaz alcanza a mostrar *"Agente editando…"*.
+- Desconectar cierra el WebSocket y el badge pasa a *"Agente desconectado"*; Reconectar reinicia la conexión con reintentos. El servidor detecta la desconexión y las herramientas devuelven `sin_pagina` mientras tanto.
+- E2E con Chrome: 26 verificaciones, incluye resaltado (`8 piezas`), log con la entrada del comando, deshacer por comando, desconectar y reconectar (el servidor vuelve a ver la página).
 
 ### F5 — (opcional, futuro)
 Transporte HTTP para agentes remotos, demo conversacional, grabación de sesión.

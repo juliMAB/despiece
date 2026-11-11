@@ -26,7 +26,17 @@
       </div>
 
       <div class="topbar-actions">
-        <span id="estado-agente" class="agente-badge" hidden aria-live="polite"></span>
+        <button id="estado-agente" class="agente-badge" type="button" hidden aria-expanded="false" aria-controls="agente-panel" title="Estado del modo agente">Agente</button>
+        <div id="agente-panel" class="agente-panel" hidden>
+          <div class="agente-panel-head">
+            <strong>Modo agente</strong>
+            <button id="btn-agente-conectar" class="mini-btn" type="button" hidden>Reconectar</button>
+            <button id="btn-agente-desconectar" class="mini-btn danger" type="button">Desconectar</button>
+          </div>
+          <p id="agente-estado-linea" class="agente-linea muted"></p>
+          <ul id="agente-log" class="agente-log" aria-live="polite"></ul>
+          <p class="agente-nota">El agente edita este mueble en vivo. <b>Ctrl+Z</b> deshace sus cambios.</p>
+        </div>
         <label class="project-name">
           <span class="sr-only">Nombre del proyecto</span>
           <input id="nombre-proyecto" type="text" placeholder="Nombre del proyecto" autocomplete="off" maxlength="80" />

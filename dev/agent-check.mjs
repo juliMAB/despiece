@@ -320,6 +320,58 @@ async function main() {
       mcp.cerrar();
     }
 
+    // ── F4: log de comandos, resaltado y desconexión ───────────────────────
+    const columnasF4 = await evaluate("document.querySelectorAll('.column-card').length");
+    const comandoF4 = await comando("agregar_columna", { ancho: 0.4 });
+    await sleep(500);
+    const resaltadas = Number(await evaluate("document.querySelector('.diagram-3d').dataset.resaltadas ?? 0"));
+    check(
+      "F4: el agente resalta las piezas que cambió",
+      comandoF4.ok === true && resaltadas > 0,
+      `${resaltadas} piezas resaltadas`,
+    );
+
+    await evaluate(`document.querySelector('#estado-agente').click()`);
+    await sleep(250);
+    const panelVisible = await evaluate(`!document.querySelector('#agente-panel').hidden`);
+    const entradasLog = await evaluate("document.querySelectorAll('#agente-log li').length");
+    const logTexto = await evaluate("document.querySelector('#agente-log').textContent");
+    check(
+      "F4: el panel muestra el log del agente",
+      panelVisible === true && entradasLog > 0 && /agregar columna/.test(logTexto),
+      `${entradasLog} entradas`,
+    );
+    await captura("agente-4-log.png");
+
+    await comando("deshacer", {});
+    await sleep(350);
+    check(
+      "F4: el agente puede deshacer su propio cambio",
+      (await evaluate("document.querySelectorAll('.column-card').length")) === columnasF4,
+    );
+
+    // desconectar y reconectar
+    await evaluate(`document.querySelector('#btn-agente-desconectar').click()`);
+    const desconectado = await esperar(() =>
+      evaluate(`document.querySelector('#estado-agente')?.textContent ?? ""`).then((texto) =>
+        texto.toLowerCase().includes("desconectado"),
+      ),
+    );
+    check("F4: se puede desconectar el agente", desconectado === true, String(await evaluate("document.querySelector('#estado-agente')?.textContent")));
+
+    await evaluate(`document.querySelector('#estado-agente').click()`);
+    await sleep(200);
+    await evaluate(`document.querySelector('#btn-agente-conectar').click()`);
+    const reconectado = await esperar(() =>
+      evaluate(`document.querySelector('#estado-agente')?.textContent ?? ""`).then((texto) =>
+        texto.includes("Agente conectado"),
+      ),
+      10000,
+    );
+    check("F4: se puede reconectar el agente", reconectado === true, String(await evaluate("document.querySelector('#estado-agente')?.textContent")));
+    const saludFinal = await (await fetch(url + "/api/salud")).json();
+    check("F4: el servidor vuelve a ver la página", saludFinal.paginaConectada === true);
+
     check("sin errores de consola", consola.length === 0, consola.join(" | ").slice(0, 300));
   } finally {
     socket.close();
