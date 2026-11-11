@@ -78,10 +78,12 @@ describe("contrato de comandos", () => {
     assert.equal(respuesta.ok, true);
     const nombres = respuesta.resultado.map((comando) => comando.nombre);
     assert.ok(nombres.includes("agregar_columna"));
-    assert.ok(nombres.includes("deshacer") === false, "deshacer no está en el catálogo de diseño");
+    assert.ok(nombres.includes("deshacer"), "deshacer se lista para la API y MCP");
+    assert.ok(nombres.includes("rehacer"));
     for (const comando of respuesta.resultado) {
       assert.ok(comando.descripcion.length > 0);
       assert.equal(typeof comando.argumentos, "string");
+      assert.equal(typeof comando.esquema, "object");
     }
   });
 

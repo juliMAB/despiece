@@ -13,6 +13,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createInterface } from "node:readline";
 
 import { crearServidorAgente } from "./agent-server.mjs";
 
@@ -117,6 +118,57 @@ async function main() {
     return respuesta.json();
   };
 
+  /** Cliente MCP por stdio, como lo haría Claude Desktop o Cursor. */
+  const crearClienteMCP = () => {
+    const proceso = spawn(process.execPath, [join(here, "mcp-server.mjs")], {
+      env: { ...process.env, DESPIECE_URL: url, DESPIECE_TOKEN: TOKEN, DESPIECE_AUTOSTART: "0" },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    const pendientes = new Map();
+    let siguienteId = 0;
+
+    createInterface({ input: proceso.stdout }).on("line", (linea) => {
+      let mensaje;
+      try {
+        mensaje = JSON.parse(linea);
+      } catch {
+        return;
+      }
+      const pendiente = pendientes.get(mensaje.id);
+      if (pendiente) {
+        pendientes.delete(mensaje.id);
+        pendiente(mensaje);
+      }
+    });
+
+    const rpc = (method, params = {}) =>
+      new Promise((resolver, rechazar) => {
+        const id = ++siguienteId;
+        const temporizador = setTimeout(() => {
+          pendientes.delete(id);
+          rechazar(new Error(`MCP sin respuesta a ${method}`));
+        }, 8000);
+        pendientes.set(id, (mensaje) => {
+          clearTimeout(temporizador);
+          resolver(mensaje);
+        });
+        proceso.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
+      });
+
+    return {
+      rpc,
+      cerrar() {
+        try {
+          proceso.stdin.end();
+          proceso.kill();
+        } catch {
+          /* ignorar */
+        }
+      },
+    };
+  };
+
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Page.navigate", { url });
@@ -208,6 +260,65 @@ async function main() {
 
     const invalido = await comando("fijar_ancho_columna", { indice: 99, ancho: 0.5 });
     check("un comando inválido devuelve error accionable", invalido.ok === false && invalido.error.codigo === "indice_fuera_de_rango");
+
+    // ── MCP por stdio, como un cliente real ────────────────────────────────
+    const mcp = crearClienteMCP();
+    try {
+      const init = await mcp.rpc("initialize", {
+        protocolVersion: "2024-11-05",
+        capabilities: {},
+        clientInfo: { name: "despiece-check", version: "1" },
+      });
+      check("MCP: initialize negocia con el servidor", init.result?.serverInfo?.name === "despiece", JSON.stringify(init.result?.serverInfo));
+
+      const herramientas = await mcp.rpc("tools/list");
+      const nombresHerramientas = (herramientas.result?.tools ?? []).map((herramienta) => herramienta.name);
+      check(
+        "MCP: tools/list expone los comandos",
+        nombresHerramientas.includes("despiece_agregar_columna") && nombresHerramientas.includes("despiece_deshacer"),
+        `${nombresHerramientas.length} herramientas`,
+      );
+
+      const llamada = await mcp.rpc("tools/call", {
+        name: "despiece_fijar_ancho_columna",
+        arguments: { indice: 0, ancho: 1.05 },
+      });
+      await sleep(350);
+      const medidasMCP = await evaluate("document.querySelector('#medidas-exteriores').textContent");
+      check(
+        "MCP: una tool edita el mueble en vivo",
+        JSON.parse(llamada.result?.content?.[0]?.text ?? "{}").ok === true && medidasMCP.includes("1,050"),
+        medidasMCP,
+      );
+      await captura("agente-3-mcp.png");
+
+      const recurso = await mcp.rpc("resources/read", { uri: "despiece://estado" });
+      const estadoRecurso = JSON.parse(recurso.result?.contents?.[0]?.text ?? "{}");
+      check(
+        "MCP: resources/read devuelve el estado",
+        Array.isArray(estadoRecurso.design?.columns),
+        `${estadoRecurso.design?.columns?.length ?? 0} columnas`,
+      );
+
+      const capturaMCP = await mcp.rpc("tools/call", { name: "despiece_capturar_vista", arguments: {} });
+      const imagenMCP = capturaMCP.result?.content?.find((parte) => parte.type === "image");
+      check(
+        "MCP: capturar_vista devuelve una imagen",
+        Boolean(imagenMCP) && imagenMCP.mimeType === "image/png",
+        `${imagenMCP?.data?.length ?? 0} caracteres base64`,
+      );
+
+      const deshacerMCP = await mcp.rpc("tools/call", { name: "despiece_deshacer", arguments: {} });
+      await sleep(300);
+      const medidasTrasDeshacer = await evaluate("document.querySelector('#medidas-exteriores').textContent");
+      check(
+        "MCP: deshacer también funciona",
+        JSON.parse(deshacerMCP.result?.content?.[0]?.text ?? "{}").ok === true && medidasTrasDeshacer.includes("0,900"),
+        medidasTrasDeshacer,
+      );
+    } finally {
+      mcp.cerrar();
+    }
 
     check("sin errores de consola", consola.length === 0, consola.join(" | ").slice(0, 300));
   } finally {

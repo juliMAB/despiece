@@ -1,6 +1,6 @@
 # Plan: modo agente (API local + MCP)
 
-> **Estado:** **F2 implementado** (2026-11-11). F3 (adaptador MCP) es el próximo paso.
+> **Estado:** **F3 implementado** (2026-11-11). F4 (modo agente en la UI) es el próximo paso.
 > **Decisión del usuario:** sí al modo agente; **no** a la optimización de corte (el carpintero se encarga del nesting).
 
 Este documento es el contrato de trabajo del "modo agente" de Despiece. Define qué se construye, qué no, cómo se comunican las partes y cuándo se considera terminado cada paso. Si algo no está acá, no está en el alcance hasta que se actualice este archivo.
@@ -290,12 +290,38 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8790/api/comando `
 - El badge del encabezado muestra el estado de la conexión (`Agente conectado`, `Reconectando…`, etc.).
 - El script `dev/agent-check.mjs` (14 verificaciones) cubre el flujo completo con Chrome: comando HTTP → cambio en el DOM, sin recarga, captura, undo y seguridad.
 
-### F3 — Adaptador MCP (stdio)
-**Entrega:** `mcp/server.mjs` (`npm run mcp`), tools y resources.
+### F3 — Adaptador MCP (stdio) ✅
+**Entrega:** `dev/mcp-core.mjs` (protocolo, herramientas y recursos), `dev/mcp-server.mjs` (stdio + cliente HTTP + servidor embebido opcional), `ESQUEMAS` de entrada en `src/app/commands.js`, script `npm run mcp` y tests.
 **Aceptación:**
-- Un cliente MCP de prueba lista las tools y ejecuta `despiece_agregar_columna` → el 3D cambia.
-- Errores accionables cuando no hay página.
-- Documentado cómo conectarlo desde un cliente MCP estándar.
+- ✅ Un cliente MCP de prueba lista las tools y ejecuta `despiece_agregar_columna` → el 3D cambia (verificado en el E2E de Chrome).
+- ✅ Errores accionables cuando no hay página (`sin_pagina` → "Iniciá `npm run agent`…").
+- ✅ Documentado cómo conectarlo desde un cliente MCP estándar.
+
+**Notas de implementación:**
+- Protocolo: JSON-RPC 2.0 por stdio, línea por mensaje. Versiones soportadas: `2025-06-18`, `2025-03-26`, `2024-11-05` (negocia con la del cliente).
+- `initialize` devuelve `capabilities.tools` y `capabilities.resources`, más `instructions` para orientar al agente.
+- Herramientas: **26** = 25 comandos del catálogo (`despiece_<comando>`, incluidos `deshacer` y `rehacer`) + `despiece_salud`. Cada una con `inputSchema` tomado de `ESQUEMAS` (no se duplica la definición).
+- Recursos: `despiece://estado` (JSON), `despiece://despiece` (CSV generado con `cutlistToCsv`), `despiece://captura` (PNG como blob).
+- `despiece_capturar_vista` devuelve **texto + imagen** (content array), así un agente multimodal "ve" el mueble.
+- Errores de comando → `isError: true` con el JSON del error y la sugerencia; fallo de conexión → mensaje con los pasos para arrancar el servidor.
+- Si no hay servidor de agentes corriendo, el MCP levanta uno **embebido** (misma app + WebSocket) salvo `DESPIECE_AUTOSTART=0`. El token se lee de `.despiece-token` o `DESPIECE_TOKEN`.
+- `stdout` es solo protocolo; los logs van a `stderr`.
+- Tests: 14 del núcleo (initialize, tools, recursos, errores, imágenes, notificaciones) + 5 por stdio real (spawn del proceso + página simulada).
+- E2E con Chrome extendido a 20 verificaciones: entre ellas una tool MCP editando el mueble en vivo, captura por MCP y `deshacer` por MCP.
+
+**Config para un cliente MCP (Claude Desktop / Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "despiece": {
+      "command": "node",
+      "args": ["C:/Repos/Despiece/dev/mcp-server.mjs"],
+      "env": { "DESPIECE_URL": "http://127.0.0.1:8790" }
+    }
+  }
+}
+```
 
 ### F4 — Modo agente en la UI
 **Entrega:** indicador, log de comandos, resaltado de piezas tocadas, botón desconectar.

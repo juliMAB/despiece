@@ -510,9 +510,22 @@ export const COMANDOS = {
           nombre,
           descripcion: comando.descripcion,
           argumentos: comando.argumentos,
+          esquema: ESQUEMAS[nombre],
         })),
       };
     },
+  },
+
+  deshacer: {
+    descripcion: "Deshace el último cambio del proyecto (historial de la sesión).",
+    argumentos: "{}",
+    // Lo maneja `crearSesion` antes de buscar en el catálogo; existe acá para
+    // que la API y MCP lo descubran y lo puedan llamar por nombre.
+  },
+
+  rehacer: {
+    descripcion: "Rehace el último cambio deshecho (historial de la sesión).",
+    argumentos: "{}",
   },
 
   capturar_vista: {
@@ -652,3 +665,174 @@ export function crearSesion({ estadoInicial = {}, servicios = {} } = {}) {
 }
 
 export { normalizarDiseno };
+
+/* ── esquemas de entrada (JSON Schema) ───────────────────────────────────── */
+
+/**
+ * Esquema de entrada de cada comando.
+ *
+ * Es la fuente de verdad para validar pedidos externos (API/MCP) y para que un
+ * agente sepa qué mandar. Los comandos solo usan nombres y descripciones.
+ */
+export const ESQUEMAS = {
+  crear_proyecto: {
+    type: "object",
+    properties: {
+      nombre: { type: "string", maxLength: 80 },
+      plantillaId: { type: "string", enum: TEMPLATES.map((plantilla) => plantilla.id) },
+    },
+    additionalProperties: false,
+  },
+  cargar_plantilla: {
+    type: "object",
+    properties: {
+      plantillaId: { type: "string", enum: TEMPLATES.map((plantilla) => plantilla.id) },
+      nombre: { type: "string", maxLength: 80 },
+    },
+    required: ["plantillaId"],
+    additionalProperties: false,
+  },
+  cargar_diseno: {
+    type: "object",
+    properties: {
+      design: { type: "object", description: "Diseño completo: { columns: [...], config?: {...} }." },
+      nombre: { type: "string", maxLength: 80 },
+    },
+    required: ["design"],
+    additionalProperties: false,
+  },
+  renombrar_proyecto: {
+    type: "object",
+    properties: { nombre: { type: "string", minLength: 1, maxLength: 80 } },
+    required: ["nombre"],
+    additionalProperties: false,
+  },
+  agregar_columna: {
+    type: "object",
+    properties: {
+      ancho: { type: "number", minimum: 0.1, maximum: 2.5, description: "Ancho en metros." },
+      indice: { type: "integer", minimum: 0, description: "Posición donde insertar (0..columnas)." },
+      modulo: {
+        type: "object",
+        properties: {
+          tipo: { type: "string", enum: [...TIPOS_VALIDOS] },
+          alto: { type: "number", minimum: 0.05, maximum: 3 },
+          cajones: { type: "integer", minimum: 1, maximum: 8 },
+        },
+        additionalProperties: false,
+      },
+    },
+    additionalProperties: false,
+  },
+  quitar_columna: {
+    type: "object",
+    properties: { indice: { type: "integer", minimum: 0 } },
+    required: ["indice"],
+    additionalProperties: false,
+  },
+  fijar_ancho_columna: {
+    type: "object",
+    properties: {
+      indice: { type: "integer", minimum: 0 },
+      ancho: { type: "number", minimum: 0.1, maximum: 2.5 },
+    },
+    required: ["indice", "ancho"],
+    additionalProperties: false,
+  },
+  agregar_modulo: {
+    type: "object",
+    properties: {
+      columna: { type: "integer", minimum: 0 },
+      tipo: { type: "string", enum: [...TIPOS_VALIDOS] },
+      alto: { type: "number", minimum: 0.05, maximum: 3 },
+      cajones: { type: "integer", minimum: 1, maximum: 8 },
+      indice: { type: "integer", minimum: 0 },
+    },
+    required: ["columna", "tipo"],
+    additionalProperties: false,
+  },
+  editar_modulo: {
+    type: "object",
+    properties: {
+      columna: { type: "integer", minimum: 0 },
+      modulo: { type: "integer", minimum: 0 },
+      tipo: { type: "string", enum: [...TIPOS_VALIDOS] },
+      alto: { type: "number", minimum: 0.05, maximum: 3 },
+      cajones: { type: "integer", minimum: 1, maximum: 8 },
+    },
+    required: ["columna", "modulo"],
+    additionalProperties: false,
+  },
+  quitar_modulo: {
+    type: "object",
+    properties: {
+      columna: { type: "integer", minimum: 0 },
+      modulo: { type: "integer", minimum: 0 },
+    },
+    required: ["columna", "modulo"],
+    additionalProperties: false,
+  },
+  fijar_config: {
+    type: "object",
+    properties: {
+      valores: {
+        type: "object",
+        description: `Claves válidas: ${Object.keys(DEFAULT_CONFIG).join(", ")}.`,
+        additionalProperties: { type: "number", minimum: 0, maximum: 5 },
+      },
+    },
+    required: ["valores"],
+    additionalProperties: false,
+  },
+  abrir_todo: {
+    type: "object",
+    properties: { abierto: { type: "boolean", description: "true abre, false cierra." } },
+    additionalProperties: false,
+  },
+  alternar_apertura: {
+    type: "object",
+    properties: {
+      columna: { type: "integer", minimum: 0 },
+      modulo: { type: "integer", minimum: 0 },
+      cajon: { type: "integer", minimum: 0, description: "Índice del cajón (0-based)." },
+      hoja: { type: "string", enum: ["left", "right"], description: "Hoja de puerta a abrir." },
+    },
+    required: ["columna", "modulo"],
+    additionalProperties: false,
+  },
+  mover_camara: {
+    type: "object",
+    properties: {
+      yaw: { type: "number" },
+      pitch: { type: "number", minimum: -1.45, maximum: 1.45 },
+      zoom: { type: "number", minimum: 0.35, maximum: 4 },
+    },
+    additionalProperties: false,
+  },
+  reiniciar_camara: { type: "object", properties: {}, additionalProperties: false },
+  fijar_vista: {
+    type: "object",
+    properties: {
+      modo: { type: "string", enum: ["3d", "2d"] },
+      medidas: { type: "string", enum: ["hover", "todas", "sin"] },
+      frentes: { type: "boolean" },
+    },
+    additionalProperties: false,
+  },
+  obtener_estado: { type: "object", properties: {}, additionalProperties: false },
+  obtener_diseno: { type: "object", properties: {}, additionalProperties: false },
+  obtener_despiece: { type: "object", properties: {}, additionalProperties: false },
+  obtener_mecanizados: { type: "object", properties: {}, additionalProperties: false },
+  obtener_avisos: { type: "object", properties: {}, additionalProperties: false },
+  obtener_comandos: { type: "object", properties: {}, additionalProperties: false },
+  deshacer: { type: "object", properties: {}, additionalProperties: false },
+  rehacer: { type: "object", properties: {}, additionalProperties: false },
+  capturar_vista: {
+    type: "object",
+    properties: {
+      ancho: { type: "integer", minimum: 1 },
+      alto: { type: "integer", minimum: 1 },
+    },
+    additionalProperties: false,
+  },
+};

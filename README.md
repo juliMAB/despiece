@@ -2,8 +2,8 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.6-F2 — modo agente operativo** (servidor local + WebSocket + HTTP).
-> Próximo hito: **F3 — adaptador MCP** (plan en [docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md)).
+> Estado: **v0.7-F3 — modo agente con HTTP, WebSocket y MCP**.
+> Próximo hito: **F4 — modo agente en la UI** (log de comandos, resaltado, desconectar).
 > Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
@@ -37,7 +37,7 @@ Con `npm run agent` la app se abre en `8790`, se conecta sola y aparece el badge
 - **Exportar / importar diseño** en JSON.
 - **Guardado local**: proyectos en `localStorage`, sin cuentas ni servidores.
 - **5 plantillas** para arrancar (alacena, cómoda, placard, bajo mesada, biblioteca).
-- **Modo agente (opcional)**: con `npm run agent`, un agente o script puede editar el mueble en vivo por HTTP/WebSocket, deshacer y pedir capturas del 3D. La app sigue siendo estática y sin backend si no usás este modo.
+- **Modo agente (opcional)**: con `npm run agent`, un agente o script puede editar el mueble en vivo por HTTP/WebSocket, deshacer y pedir capturas del 3D. Con `npm run mcp` el editor se expone como **servidor MCP** (26 herramientas) para Claude Desktop, Cursor, Codex y otros agentes. La app sigue siendo estática y sin backend si no usás este modo.
 
 | Vista 3D rotada | Cómoda de 4 cajones en 3D |
 |---|---|
@@ -126,7 +126,9 @@ dev/                herramientas de desarrollo
   server.mjs        servidor estático
   agent-server.mjs  servidor del modo agente (HTTP + WebSocket + token)
   ws-lite.mjs       WebSocket mínimo sin dependencias
-  agent-check.mjs   prueba E2E del modo agente con Chrome
+  mcp-core.mjs      adaptador MCP (herramientas y recursos)
+  mcp-server.mjs    servidor MCP por stdio
+  agent-check.mjs   prueba E2E del modo agente y MCP con Chrome
   ui-check.mjs      prueba E2E de la interfaz con Chrome
 docs/               documentación técnica
 ```
@@ -136,9 +138,9 @@ El motor y la geometría 3D no dependen del navegador: se usan igual en Node o e
 ## Tests
 
 ```bash
-npm test          # 153 tests: motor, despiece, plantillas, geometría 3D, comandos y servidor de agentes
-npm run ui-check  # 37 verificaciones de la interfaz con Chrome (3D, medidas, comandos y undo)
-npm run agent-check  # 14 verificaciones del modo agente con Chrome (HTTP → cambio en vivo, captura, seguridad)
+npm test             # 172 tests: motor, despiece, plantillas, geometría 3D, comandos, servidor de agentes y MCP
+npm run ui-check     # 37 verificaciones de la interfaz con Chrome (3D, medidas, comandos y undo)
+npm run agent-check  # 20 verificaciones del modo agente y MCP con Chrome (HTTP → cambio en vivo, captura, seguridad)
 ```
 
 El motor fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
@@ -155,8 +157,8 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.4 | Abrir cada puerta/cajón con un click y medidas sobre el modelo (cotas y hover) | ✅ |
 | v0.5-F1 | **Modo agente:** capa de comandos + undo (en la app) | ✅ |
 | v0.6-F2 | Servidor local con WebSocket + endpoints HTTP + badge de conexión | ✅ |
-| v0.6-F3 | Adaptador MCP (stdio) para agentes de escritorio | 🚧 próximo |
-| v0.6-F4 | Modo agente en la UI (log de comandos, resaltado, desconectar) | ⏳ |
+| v0.7-F3 | **Adaptador MCP (stdio)**: 26 herramientas y 3 recursos | ✅ |
+| v0.7-F4 | Modo agente en la UI (log de comandos, resaltado, desconectar) | 🚧 próximo |
 | v0.6 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |
 | v1.0 | Más tipos de mueble, historial de versiones, exportación a CNC | ⏳ |
 | — | **Publicación pública** (Pages, dominio, difusión) | ⏸ diferida |
@@ -165,16 +167,17 @@ La publicación queda **en pausa a propósito**: primero el proyecto tiene que d
 
 > **Descartado por decisión del usuario:** optimización de corte (nesting). El carpintero se encarga de acomodar las piezas en las placas.
 
-## Modo agente (F2 operativo)
+## Modo agente (F2+F3 operativo)
 
-Un agente (DSH, Claude Desktop, Cursor…) puede **editar el mueble en vivo**, sin recargar la página, con comandos semánticos, undo real y capturas para que el agente "vea" lo que hace.
+Un agente (DSH, Claude Desktop, Cursor, Codex…) puede **editar el mueble en vivo**, sin recargar la página, con comandos semánticos, undo real y capturas para que el agente "vea" lo que hace.
 
 - La página sigue siendo la **fuente de verdad**; el agente manda comandos.
 - El servidor es **opcional y local** (sólo `127.0.0.1`, con token): la app sigue siendo estática y gratuita sin él.
-- HTTP/WebSocket ya funcionan; MCP por `stdio` es el próximo paso (F3).
+- **HTTP/WebSocket** para scripts (y para DSH) y **MCP por stdio** para agentes de escritorio.
 
 ```bash
 npm run agent                 # app + servidor de agentes en 8790
+npm run mcp                   # servidor MCP por stdio (usa el servidor de arriba)
 TOKEN=$(cat .despiece-token)  # el token también se imprime al arrancar
 ```
 
@@ -192,7 +195,27 @@ curl -s -X POST http://127.0.0.1:8790/api/comando \
   -d '{"nombre":"agregar_columna","argumentos":{"ancho":0.6}}'
 ```
 
+### Conectar un cliente MCP
+
+El servidor MCP (`npm run mcp`) expone **26 herramientas** (una por comando, más `despiece_salud`) y **3 recursos** (`despiece://estado`, `despiece://despiece` en CSV y `despiece://captura` en PNG). Configuración típica:
+
+```json
+{
+  "mcpServers": {
+    "despiece": {
+      "command": "node",
+      "args": ["C:/Repos/Despiece/dev/mcp-server.mjs"],
+      "env": { "DESPIECE_URL": "http://127.0.0.1:8790" }
+    }
+  }
+}
+```
+
+Si no hay servidor de agentes corriendo, el MCP levanta uno embebido (la app sigue estando en el navegador; el token está en `.despiece-token`). Los errores vuelven como `isError` con una sugerencia concreta (`sin_pagina` → "Iniciá `npm run agent` y abrí la app").
+
 ![Modo agente conectado](docs/img/agente-1-conectado.png)
+
+![Una tool MCP cambiando el mueble en vivo](docs/img/agente-3-mcp.png)
 
 📄 Plan completo, catálogo de comandos, protocolos, seguridad y criterios de aceptación: **[docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md)**.
 
