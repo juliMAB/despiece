@@ -1,0 +1,238 @@
+{
+ "parts": [
+  {
+   "kind": "panel",
+   "key": "vertical:0",
+   "role": "vertical-side",
+   "position": {
+    "x": -0.35,
+    "y": 0.48,
+    "z": 0
+   },
+   "size": {
+    "width": 0.6,
+    "height": 0.96,
+    "thickness": 0.025
+   },
+   "orientation": "vertical-yz",
+   "touchedModuleIds": [
+    "puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "vertical:1",
+   "role": "vertical-side",
+   "position": {
+    "x": 0.35,
+    "y": 0.48,
+    "z": 0
+   },
+   "size": {
+    "width": 0.6,
+    "height": 0.96,
+    "thickness": 0.025
+   },
+   "orientation": "vertical-yz",
+   "touchedModuleIds": [
+    "puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:0:0",
+   "role": "horizontal-deck",
+   "position": {
+    "x": 0,
+    "y": 0.03,
+    "z": 0.0075
+   },
+   "size": {
+    "width": 0.671,
+    "height": 0.615,
+    "thickness": 0.025
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:0:1",
+   "role": "horizontal-deck",
+   "position": {
+    "x": 0,
+    "y": 0.93,
+    "z": 0.0075
+   },
+   "size": {
+    "width": 0.671,
+    "height": 0.615,
+    "thickness": 0.025
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "back:0:0",
+   "role": "back-panel",
+   "sourceModuleId": "puertas",
+   "position": {
+    "x": 0,
+    "y": 0.48,
+    "z": -0.282
+   },
+   "size": {
+    "width": 0.683,
+    "height": 0.884,
+    "thickness": 0.006
+   },
+   "orientation": "vertical-xy",
+   "touchedModuleIds": [
+    "puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "door:puertas:left",
+   "role": "door-front",
+   "sourceModuleId": "puertas",
+   "doorHinge": "left",
+   "position": {
+    "x": -0.16774999999999998,
+    "y": 0.48,
+    "z": 0.2875
+   },
+   "size": {
+    "width": 0.331,
+    "height": 0.867,
+    "thickness": 0.025
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "door:puertas:right",
+   "role": "door-front",
+   "sourceModuleId": "puertas",
+   "doorHinge": "right",
+   "position": {
+    "x": 0.16774999999999998,
+    "y": 0.48,
+    "z": 0.2875
+   },
+   "size": {
+    "width": 0.331,
+    "height": 0.867,
+    "thickness": 0.025
+   },
+   "orientation": "vertical-xy"
+  }
+ ],
+ "operations": [
+  {
+   "kind": "operation",
+   "key": "hole:door:puertas:left:a",
+   "operationType": "through-hole",
+   "targetPanelKey": "door:puertas:left",
+   "face": "front",
+   "center": {
+    "x": 0.13774999999999998,
+    "y": 0.39350000000000007
+   },
+   "diameter": 0.025,
+   "depth": 0.025,
+   "through": true,
+   "sourceModuleId": "puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:door:puertas:right:a",
+   "operationType": "through-hole",
+   "targetPanelKey": "door:puertas:right",
+   "face": "front",
+   "center": {
+    "x": -0.13774999999999998,
+    "y": 0.39350000000000007
+   },
+   "diameter": 0.025,
+   "depth": 0.025,
+   "through": true,
+   "sourceModuleId": "puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:0",
+   "face": "front",
+   "center": {
+    "x": 0.282,
+    "y": -0.024375
+   },
+   "width": 0.007,
+   "length": 0.911,
+   "depth": 0.006,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:1",
+   "face": "back",
+   "center": {
+    "x": 0.282,
+    "y": -0.024375
+   },
+   "width": 0.007,
+   "length": 0.911,
+   "depth": 0.006,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:bottom-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:0",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": 0.2895
+   },
+   "width": 0.007,
+   "length": 0.671,
+   "depth": 0.006,
+   "rotation": 0,
+   "sourceModuleId": "puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:top-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:1",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": 0.2895
+   },
+   "width": 0.007,
+   "length": 0.671,
+   "depth": 0.006,
+   "rotation": 0,
+   "sourceModuleId": "puertas"
+  }
+ ],
+ "bounds": {
+  "width": 0.7,
+  "height": 0.96,
+  "depth": 0.6
+ },
+ "issues": []
+}

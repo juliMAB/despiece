@@ -1,0 +1,12 @@
+# dependencias
+node_modules/
+
+# temporales y perfiles de navegador (herramientas de desarrollo)
+.chrome-*/
+chrome-*/
+*.log
+
+# sistema
+.DS_Store
+Thumbs.db
+desktop.ini

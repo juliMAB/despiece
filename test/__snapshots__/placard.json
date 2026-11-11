@@ -1,0 +1,877 @@
+{
+ "parts": [
+  {
+   "kind": "panel",
+   "key": "vertical:0",
+   "role": "vertical-side",
+   "position": {
+    "x": -0.75,
+    "y": 0.92,
+    "z": 0
+   },
+   "size": {
+    "width": 0.45,
+    "height": 1.84,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz",
+   "touchedModuleIds": [
+    "c1-cajones",
+    "c1-puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "vertical:1",
+   "role": "vertical-side",
+   "position": {
+    "x": -0.15000000000000002,
+    "y": 0.92,
+    "z": 0
+   },
+   "size": {
+    "width": 0.45,
+    "height": 1.84,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz",
+   "touchedModuleIds": [
+    "c1-cajones",
+    "c1-puertas",
+    "c2-puerta"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "vertical:2",
+   "role": "vertical-side",
+   "position": {
+    "x": 0.75,
+    "y": 0.92,
+    "z": 0
+   },
+   "size": {
+    "width": 0.45,
+    "height": 1.84,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz",
+   "touchedModuleIds": [
+    "c2-puerta"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:0:0",
+   "role": "horizontal-deck",
+   "position": {
+    "x": -0.45,
+    "y": 0.02,
+    "z": 0.005
+   },
+   "size": {
+    "width": 0.578,
+    "height": 0.46,
+    "thickness": 0.018
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "c1-cajones"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:0:1",
+   "role": "horizontal-deck",
+   "position": {
+    "x": -0.45,
+    "y": 0.62,
+    "z": 0.005
+   },
+   "size": {
+    "width": 0.578,
+    "height": 0.46,
+    "thickness": 0.018
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "c1-cajones",
+    "c1-puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:0:2",
+   "role": "horizontal-deck",
+   "position": {
+    "x": -0.45,
+    "y": 1.82,
+    "z": 0.005
+   },
+   "size": {
+    "width": 0.578,
+    "height": 0.46,
+    "thickness": 0.018
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "c1-puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "back:0:0",
+   "role": "back-panel",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.45,
+    "y": 0.32,
+    "z": -0.20800000000000002
+   },
+   "size": {
+    "width": 0.587,
+    "height": 0.587,
+    "thickness": 0.004
+   },
+   "orientation": "vertical-xy",
+   "touchedModuleIds": [
+    "c1-cajones"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:0:front",
+   "role": "drawer-front",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.45,
+    "y": 0.176,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.574,
+    "height": 0.286,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:0:left",
+   "role": "drawer-side",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.728,
+    "y": 0.174,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.243,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:0:right",
+   "role": "drawer-side",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.17200000000000004,
+    "y": 0.174,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.243,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:0:back",
+   "role": "drawer-back",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.45,
+    "y": 0.174,
+    "z": -0.18300000000000002
+   },
+   "size": {
+    "width": 0.574,
+    "height": 0.243,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:0:bottom",
+   "role": "drawer-bottom",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.45,
+    "y": 0.07,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.547,
+    "height": 0.377,
+    "thickness": 0.004
+   },
+   "orientation": "horizontal-xz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:1:front",
+   "role": "drawer-front",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.45,
+    "y": 0.464,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.574,
+    "height": 0.286,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:1:left",
+   "role": "drawer-side",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.728,
+    "y": 0.466,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.243,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:1:right",
+   "role": "drawer-side",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.17200000000000004,
+    "y": 0.466,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.243,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:1:back",
+   "role": "drawer-back",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.45,
+    "y": 0.466,
+    "z": -0.18300000000000002
+   },
+   "size": {
+    "width": 0.574,
+    "height": 0.243,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:c1-cajones:1:bottom",
+   "role": "drawer-bottom",
+   "sourceModuleId": "c1-cajones",
+   "position": {
+    "x": -0.45,
+    "y": 0.361,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.547,
+    "height": 0.377,
+    "thickness": 0.004
+   },
+   "orientation": "horizontal-xz"
+  },
+  {
+   "kind": "panel",
+   "key": "back:0:1",
+   "role": "back-panel",
+   "sourceModuleId": "c1-puertas",
+   "position": {
+    "x": -0.45,
+    "y": 1.22,
+    "z": -0.20800000000000002
+   },
+   "size": {
+    "width": 0.587,
+    "height": 1.187,
+    "thickness": 0.004
+   },
+   "orientation": "vertical-xy",
+   "touchedModuleIds": [
+    "c1-puertas"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "door:c1-puertas:left",
+   "role": "door-front",
+   "sourceModuleId": "c1-puertas",
+   "doorHinge": "left",
+   "position": {
+    "x": -0.5945,
+    "y": 1.22,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.285,
+    "height": 1.174,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "door:c1-puertas:right",
+   "role": "door-front",
+   "sourceModuleId": "c1-puertas",
+   "doorHinge": "right",
+   "position": {
+    "x": -0.3055,
+    "y": 1.22,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.285,
+    "height": 1.174,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:1:0",
+   "role": "horizontal-deck",
+   "position": {
+    "x": 0.30000000000000004,
+    "y": 0.02,
+    "z": 0.005
+   },
+   "size": {
+    "width": 0.878,
+    "height": 0.46,
+    "thickness": 0.018
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "c2-puerta"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:1:1",
+   "role": "horizontal-deck",
+   "position": {
+    "x": 0.30000000000000004,
+    "y": 1.82,
+    "z": 0.005
+   },
+   "size": {
+    "width": 0.878,
+    "height": 0.46,
+    "thickness": 0.018
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "c2-puerta"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "back:1:0",
+   "role": "back-panel",
+   "sourceModuleId": "c2-puerta",
+   "position": {
+    "x": 0.30000000000000004,
+    "y": 0.92,
+    "z": -0.20800000000000002
+   },
+   "size": {
+    "width": 0.887,
+    "height": 1.787,
+    "thickness": 0.004
+   },
+   "orientation": "vertical-xy",
+   "touchedModuleIds": [
+    "c2-puerta"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "door:c2-puerta",
+   "role": "door-front",
+   "sourceModuleId": "c2-puerta",
+   "doorHinge": "left",
+   "position": {
+    "x": 0.30000000000000004,
+    "y": 0.92,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.874,
+    "height": 1.774,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  }
+ ],
+ "operations": [
+  {
+   "kind": "operation",
+   "key": "hole:drawer:c1-cajones:0:front:left",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:c1-cajones:0:front",
+   "face": "front",
+   "center": {
+    "x": -0.03,
+    "y": 0.10299999999999998
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:c1-cajones:0:front:right",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:c1-cajones:0:front",
+   "face": "front",
+   "center": {
+    "x": 0.03,
+    "y": 0.10299999999999998
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:0:bottom:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:0:left",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.10449999999999997
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:0:bottom:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:0:right",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.10449999999999997
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:0:bottom:back",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:0:back",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.10449999999999997
+   },
+   "width": 0.005,
+   "length": 0.574,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:0:bottom:front",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:0:front",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.106
+   },
+   "width": 0.005,
+   "length": 0.551,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:c1-cajones:1:front:left",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:c1-cajones:1:front",
+   "face": "front",
+   "center": {
+    "x": -0.03,
+    "y": 0.10299999999999998
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:c1-cajones:1:front:right",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:c1-cajones:1:front",
+   "face": "front",
+   "center": {
+    "x": 0.03,
+    "y": 0.10299999999999998
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:1:bottom:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:1:left",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.10449999999999998
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:1:bottom:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:1:right",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.10449999999999998
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:1:bottom:back",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:1:back",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.10449999999999998
+   },
+   "width": 0.005,
+   "length": 0.574,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:c1-cajones:1:bottom:front",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:c1-cajones:1:front",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.10299999999999992
+   },
+   "width": 0.005,
+   "length": 0.551,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:door:c1-puertas:left:a",
+   "operationType": "through-hole",
+   "targetPanelKey": "door:c1-puertas:left",
+   "face": "front",
+   "center": {
+    "x": 0.11449999999999999,
+    "y": 0.5469999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "c1-puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:door:c1-puertas:right:a",
+   "operationType": "through-hole",
+   "targetPanelKey": "door:c1-puertas:right",
+   "face": "front",
+   "center": {
+    "x": -0.11449999999999999,
+    "y": 0.5469999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "c1-puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:door:c2-puerta:a",
+   "operationType": "through-hole",
+   "targetPanelKey": "door:c2-puerta",
+   "face": "front",
+   "center": {
+    "x": 0.39699999999999996,
+    "y": 0.8470000000000001
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "c2-puerta"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:0",
+   "face": "front",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 1.806,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:1",
+   "face": "back",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 1.807,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:bottom-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:0",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.578,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:top-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:1",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.578,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:1:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:0",
+   "face": "front",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 1.806,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "c1-puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:1:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:1",
+   "face": "back",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 1.807,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "c1-puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:1:bottom-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:1",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.578,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:1:top-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:2",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.578,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c1-puertas"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:1:0:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:1",
+   "face": "front",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 1.807,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "c2-puerta"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:1:0:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:2",
+   "face": "back",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 1.807,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "c2-puerta"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:1:0:bottom-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:1:0",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.878,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c2-puerta"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:1:0:top-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:1:1",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.878,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "c2-puerta"
+  }
+ ],
+ "bounds": {
+  "width": 1.5,
+  "height": 1.84,
+  "depth": 0.45
+ },
+ "issues": []
+}

@@ -1,0 +1,709 @@
+{
+ "parts": [
+  {
+   "kind": "panel",
+   "key": "vertical:0",
+   "role": "vertical-side",
+   "position": {
+    "x": -0.4,
+    "y": 0.395,
+    "z": 0
+   },
+   "size": {
+    "width": 0.45,
+    "height": 0.79,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz",
+   "touchedModuleIds": [
+    "cajones"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "vertical:1",
+   "role": "vertical-side",
+   "position": {
+    "x": 0.4,
+    "y": 0.395,
+    "z": 0
+   },
+   "size": {
+    "width": 0.45,
+    "height": 0.79,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz",
+   "touchedModuleIds": [
+    "cajones"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:0:0",
+   "role": "horizontal-deck",
+   "position": {
+    "x": 0,
+    "y": 0.02,
+    "z": 0.005
+   },
+   "size": {
+    "width": 0.778,
+    "height": 0.46,
+    "thickness": 0.018
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "cajones"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "horizontal:0:1",
+   "role": "horizontal-deck",
+   "position": {
+    "x": 0,
+    "y": 0.77,
+    "z": 0.005
+   },
+   "size": {
+    "width": 0.778,
+    "height": 0.46,
+    "thickness": 0.018
+   },
+   "orientation": "horizontal-xz",
+   "touchedModuleIds": [
+    "cajones"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "back:0:0",
+   "role": "back-panel",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.395,
+    "z": -0.20800000000000002
+   },
+   "size": {
+    "width": 0.787,
+    "height": 0.737,
+    "thickness": 0.004
+   },
+   "orientation": "vertical-xy",
+   "touchedModuleIds": [
+    "cajones"
+   ]
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:0:front",
+   "role": "drawer-front",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.153,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.774,
+    "height": 0.24,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:0:left",
+   "role": "drawer-side",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": -0.378,
+    "y": 0.151,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:0:right",
+   "role": "drawer-side",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0.378,
+    "y": 0.151,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:0:back",
+   "role": "drawer-back",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.151,
+    "z": -0.18300000000000002
+   },
+   "size": {
+    "width": 0.774,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:0:bottom",
+   "role": "drawer-bottom",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.07,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.747,
+    "height": 0.377,
+    "thickness": 0.004
+   },
+   "orientation": "horizontal-xz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:1:front",
+   "role": "drawer-front",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.395,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.774,
+    "height": 0.24,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:1:left",
+   "role": "drawer-side",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": -0.378,
+    "y": 0.395,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:1:right",
+   "role": "drawer-side",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0.378,
+    "y": 0.395,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:1:back",
+   "role": "drawer-back",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.395,
+    "z": -0.18300000000000002
+   },
+   "size": {
+    "width": 0.774,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:1:bottom",
+   "role": "drawer-bottom",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.314,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.747,
+    "height": 0.377,
+    "thickness": 0.004
+   },
+   "orientation": "horizontal-xz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:2:front",
+   "role": "drawer-front",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.637,
+    "z": 0.216
+   },
+   "size": {
+    "width": 0.774,
+    "height": 0.24,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:2:left",
+   "role": "drawer-side",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": -0.378,
+    "y": 0.639,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:2:right",
+   "role": "drawer-side",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0.378,
+    "y": 0.639,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.377,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-yz"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:2:back",
+   "role": "drawer-back",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.639,
+    "z": -0.18300000000000002
+   },
+   "size": {
+    "width": 0.774,
+    "height": 0.196,
+    "thickness": 0.018
+   },
+   "orientation": "vertical-xy"
+  },
+  {
+   "kind": "panel",
+   "key": "drawer:cajones:2:bottom",
+   "role": "drawer-bottom",
+   "sourceModuleId": "cajones",
+   "position": {
+    "x": 0,
+    "y": 0.558,
+    "z": 0.016499999999999987
+   },
+   "size": {
+    "width": 0.747,
+    "height": 0.377,
+    "thickness": 0.004
+   },
+   "orientation": "horizontal-xz"
+  }
+ ],
+ "operations": [
+  {
+   "kind": "operation",
+   "key": "hole:drawer:cajones:0:front:left",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:cajones:0:front",
+   "face": "front",
+   "center": {
+    "x": -0.03,
+    "y": 0.07999999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:cajones:0:front:right",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:cajones:0:front",
+   "face": "front",
+   "center": {
+    "x": 0.03,
+    "y": 0.07999999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:0:bottom:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:0:left",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.081
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:0:bottom:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:0:right",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.081
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:0:bottom:back",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:0:back",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.081
+   },
+   "width": 0.005,
+   "length": 0.774,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:0:bottom:front",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:0:front",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.083
+   },
+   "width": 0.005,
+   "length": 0.751,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:cajones:1:front:left",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:cajones:1:front",
+   "face": "front",
+   "center": {
+    "x": -0.03,
+    "y": 0.07999999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:cajones:1:front:right",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:cajones:1:front",
+   "face": "front",
+   "center": {
+    "x": 0.03,
+    "y": 0.07999999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:1:bottom:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:1:left",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.08099999999999996
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:1:bottom:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:1:right",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.08099999999999996
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:1:bottom:back",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:1:back",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.08099999999999996
+   },
+   "width": 0.005,
+   "length": 0.774,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:1:bottom:front",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:1:front",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.08099999999999996
+   },
+   "width": 0.005,
+   "length": 0.751,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:cajones:2:front:left",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:cajones:2:front",
+   "face": "front",
+   "center": {
+    "x": -0.03,
+    "y": 0.07999999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "hole:drawer:cajones:2:front:right",
+   "operationType": "through-hole",
+   "targetPanelKey": "drawer:cajones:2:front",
+   "face": "front",
+   "center": {
+    "x": 0.03,
+    "y": 0.07999999999999999
+   },
+   "diameter": 0.025,
+   "depth": 0.018,
+   "through": true,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:2:bottom:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:2:left",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.08099999999999996
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:2:bottom:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:2:right",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.08099999999999996
+   },
+   "width": 0.005,
+   "length": 0.377,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:2:bottom:back",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:2:back",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": -0.08099999999999996
+   },
+   "width": 0.005,
+   "length": 0.774,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:drawer:drawer:cajones:2:bottom:front",
+   "operationType": "rail-cut",
+   "targetPanelKey": "drawer:cajones:2:front",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": -0.07899999999999996
+   },
+   "width": 0.005,
+   "length": 0.751,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:left-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:0",
+   "face": "front",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 0.757,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:right-side",
+   "operationType": "rail-cut",
+   "targetPanelKey": "vertical:1",
+   "face": "back",
+   "center": {
+    "x": 0.20800000000000002,
+    "y": -0.01675
+   },
+   "width": 0.005,
+   "length": 0.757,
+   "depth": 0.005,
+   "rotation": 1.5707963267948966,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:bottom-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:0",
+   "face": "front",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.778,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  },
+  {
+   "kind": "operation",
+   "key": "rail:back:back:0:0:top-deck",
+   "operationType": "rail-cut",
+   "targetPanelKey": "horizontal:0:1",
+   "face": "back",
+   "center": {
+    "x": 0,
+    "y": 0.21300000000000002
+   },
+   "width": 0.005,
+   "length": 0.778,
+   "depth": 0.005,
+   "rotation": 0,
+   "sourceModuleId": "cajones"
+  }
+ ],
+ "bounds": {
+  "width": 0.8,
+  "height": 0.79,
+  "depth": 0.45
+ },
+ "issues": []
+}
