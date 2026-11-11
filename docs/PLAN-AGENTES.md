@@ -1,6 +1,6 @@
 # Plan: modo agente (API local + MCP)
 
-> **Estado:** **F1 implementado** (2026-11-11). F2 (servidor local + WebSocket) es el próximo paso.
+> **Estado:** **F2 implementado** (2026-11-11). F3 (adaptador MCP) es el próximo paso.
 > **Decisión del usuario:** sí al modo agente; **no** a la optimización de corte (el carpintero se encarga del nesting).
 
 Este documento es el contrato de trabajo del "modo agente" de Despiece. Define qué se construye, qué no, cómo se comunican las partes y cuándo se considera terminado cada paso. Si algo no está acá, no está en el alcance hasta que se actualice este archivo.
@@ -270,14 +270,25 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8790/api/comando `
 - El nombre del proyecto se confirma con `change` (blur/Enter), no en cada tecla, para no llenar el historial de mini-pasos.
 - La vista (2D/3D, medidas, frentes, apertura, cámara) va por `fijar_vista` / `abrir_todo` / `alternar_apertura` / `mover_camara` / `reiniciar_camara` pero **no** entra al historial.
 
-### F2 — Servidor local + WebSocket
-**Entrega:** `dev/agent-server.mjs` (`npm run agent`), modo agente en la página, endpoints HTTP.
+### F2 — Servidor local + WebSocket ✅
+**Entrega:** `dev/agent-server.mjs` (`npm run agent`), `dev/ws-lite.mjs` (WebSocket sin dependencias), cliente en `src/ui/agent.js`, modo agente en la página, endpoints HTTP y script `npm run agent-check` (E2E con Chrome).
 **Aceptación:**
-- Con la página abierta, `POST /api/comando` cambia el 3D **sin recargar** (verificado con Chrome automatizado).
-- Sin página abierta devuelve `sin_pagina`.
-- Token obligatorio (401 sin token, verificado).
-- `/api/captura.png` devuelve un PNG válido con el mueble.
-- El servidor se cierra limpio y no deja procesos.
+- ✅ Con la página abierta, `POST /api/comando` cambia el 3D **sin recargar** (verificado con Chrome automatizado).
+- ✅ Sin página abierta devuelve `sin_pagina` (HTTP 409 en `/api/estado` y `/api/captura.png`; `ok:false` en `/api/comando`).
+- ✅ Token obligatorio: 401 sin token o con token incorrecto (verificado).
+- ✅ `/api/captura.png` devuelve un PNG válido con el mueble.
+- ✅ El servidor se cierra limpio y no deja procesos.
+
+**Notas de implementación:**
+- WebSocket propio (`dev/ws-lite.mjs`): handshake, frames de texto, ping/pong, cierre y fragmentación; sin dependencias.
+- El servidor inyecta `window.__DESPIECE_AGENTE__ = { token, entrada: "/ws", version }` en el HTML que sirve. Si la página se sirve con `npm run serve` (sin agente), no se inyecta nada y la app queda igual que siempre.
+- Protocolo real: el servidor manda `{ type: "hola", version, revision }` al conectar y `{ type: "error", codigo: "reemplazada" }` si otra pestaña toma el control (v1: una sola página).
+- La captura viaja como data URL en el mensaje `captura`; el servidor la convierte a PNG. El cliente fuerza la vista 3D antes de capturar (dos `requestAnimationFrame` para que el canvas esté dibujado).
+- La página avisa el estado después de cada cambio (propio o del agente): `{ type: "estado", revision, design, resumen, avisos }`.
+- El servidor guarda el último estado y la última captura; `/api/despiece` compila del lado del servidor con el mismo motor.
+- Timeout de 8 s por comando/captura, con error `tiempo_agotado`.
+- El badge del encabezado muestra el estado de la conexión (`Agente conectado`, `Reconectando…`, etc.).
+- El script `dev/agent-check.mjs` (14 verificaciones) cubre el flujo completo con Chrome: comando HTTP → cambio en el DOM, sin recarga, captura, undo y seguridad.
 
 ### F3 — Adaptador MCP (stdio)
 **Entrega:** `mcp/server.mjs` (`npm run mcp`), tools y resources.

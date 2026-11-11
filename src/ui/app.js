@@ -32,6 +32,7 @@ import { renderDiagram } from "./render2d.js";
 import { crearVisor3D } from "./render3d.js";
 import { proyectarPunto } from "./geometry3d.js";
 import { crearSesion } from "../app/commands.js";
+import { conectarAgente } from "./agent.js";
 import {
   LIMITES,
   TIPOS_MODULO,
@@ -63,6 +64,7 @@ const CAMPOS_CONFIG = [
 
 const state = {
   sesion: null, // capa de comandos + historial
+  agente: null, // cliente del modo agente (si la página la sirve el servidor)
   resultado: null, // salida del motor
   vista: "despiece", // despiece | mecanizados
   vista3d: storage.leerVista3d(), // true = 3D, false = 2D
@@ -78,6 +80,7 @@ const refs = {
   nombre: $("nombre-proyecto"),
   listaPlantillas: $("lista-plantillas"),
   listaProyectos: $("lista-proyectos"),
+  agente: $("estado-agente"),
   diagrama: $("diagrama"),
   lienzo2d: document.querySelector("#diagrama .diagram-2d"),
   canvas3d: document.querySelector("#diagrama .diagram-3d"),
@@ -157,6 +160,7 @@ function ejecutar(nombre, argumentos = {}, opciones = {}) {
   } else {
     compilar();
   }
+  state.agente?.enviarEstado();
   return respuesta;
 }
 
@@ -169,6 +173,7 @@ function abrirProyecto(nuevoProyecto) {
   storage.guardarActual(proyecto());
   compilar();
   renderTodo();
+  state.agente?.enviarEstado();
   anunciar(`Abierto: ${proyecto().name}`);
 }
 
@@ -332,6 +337,58 @@ function aplicarVistaPedida(pedido) {
     refs.chkFrentes.checked = pedido.frentes;
     asegurarVisor().setMostrarFrentes(pedido.frentes);
   }
+}
+
+/* ── modo agente ─────────────────────────────────────────────────────────── */
+
+/** Aplica un comando que llega del agente: refresca la UI y avisa al servidor. */
+function aplicarComandoAgente(nombre, argumentos) {
+  const revisionAntes = state.sesion.revision;
+  const respuesta = state.sesion.aplicar(nombre, argumentos);
+  if (respuesta.ok && state.sesion.revision !== revisionAntes) {
+    refs.nombre.value = proyecto().name;
+    compilar();
+    renderTodo();
+    storage.guardarActual(proyecto());
+  }
+  return respuesta;
+}
+
+/** Captura PNG para que el agente "vea" el mueble (fuerza la vista 3D). */
+async function capturarParaAgente() {
+  if (!state.vista3d) aplicarVistaPedida({ modo: "3d" });
+  await new Promise((resolver) => requestAnimationFrame(() => requestAnimationFrame(resolver)));
+  return refs.canvas3d.toDataURL("image/png");
+}
+
+function actualizarBadgeAgente(estadoConexion) {
+  const etiquetas = {
+    conectando: "Conectando agente…",
+    conectado: "Agente conectado",
+    reconectando: "Agente reconectando…",
+    desconectado: "Agente desconectado",
+  };
+  refs.agente.textContent = etiquetas[estadoConexion] ?? estadoConexion;
+  refs.agente.className = "agente-badge is-" + estadoConexion;
+  refs.agente.hidden = false;
+}
+
+/** Conecta con el servidor de agentes si esta página la sirve él. */
+function iniciarAgente() {
+  const config = globalThis.__DESPIECE_AGENTE__;
+  if (!config?.token) return;
+  actualizarBadgeAgente("conectando");
+  state.agente = conectarAgente({
+    aplicar: aplicarComandoAgente,
+    obtenerEstado: () => ({
+      revision: state.sesion.revision,
+      design: proyecto().design,
+      resumen: summarize(state.resultado),
+      avisos: state.resultado.issues,
+    }),
+    capturar: capturarParaAgente,
+    alEstadoConexion: actualizarBadgeAgente,
+  });
 }
 
 /* ── medidas sobre el modelo ─────────────────────────────────────────────── */
@@ -1012,6 +1069,7 @@ function arrancar() {
   compilar();
   renderTodo();
   aplicarVista();
+  iniciarAgente();
 }
 
 arrancar();

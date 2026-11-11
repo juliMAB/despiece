@@ -532,3 +532,31 @@ th.num { text-align: right; }
 }
 .footer a { color: var(--muted); }
 .footer a:hover { color: var(--accent-soft); }
+
+/* indicador del modo agente */
+.agente-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid #3f3a35;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.agente-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6b7280;
+}
+.agente-badge.is-conectado { color: #86efac; border-color: #14532d; }
+.agente-badge.is-conectado::before { background: #22c55e; }
+.agente-badge.is-conectando,
+.agente-badge.is-reconectando { color: #fcd34d; border-color: #78350f; }
+.agente-badge.is-conectando::before,
+.agente-badge.is-reconectando::before { background: #f59e0b; }
+.agente-badge.is-desconectado { color: #fca5a5; border-color: #7f1d1d; }
+.agente-badge.is-desconectado::before { background: #ef4444; }

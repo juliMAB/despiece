@@ -2,8 +2,8 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.5-F1 — capa de comandos + undo** (base del modo agente).
-> Próximo hito: **F2 — servidor local + WebSocket** (plan en [docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md)).
+> Estado: **v0.6-F2 — modo agente operativo** (servidor local + WebSocket + HTTP).
+> Próximo hito: **F3 — adaptador MCP** (plan en [docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md)).
 > Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
@@ -15,10 +15,13 @@ La app es estática y no tiene build: alcanza con servir la carpeta.
 ```bash
 git clone https://github.com/juliMAB/despiece.git
 cd despiece
-npm run serve      # http://127.0.0.1:8080
+npm run serve      # http://127.0.0.1:8080 (app normal)
+npm run agent      # http://127.0.0.1:8790 (app + modo agente)
 ```
 
 Abrís `http://127.0.0.1:8080`, elegís una plantilla y empezás a editar. Todo se calcula en tu navegador y los proyectos se guardan en tu propio equipo.
+
+Con `npm run agent` la app se abre en `8790`, se conecta sola y aparece el badge **Agente conectado**: desde ese momento un agente (o un script) puede editar el mueble en vivo por HTTP, sin recargar la página.
 
 ## Qué hace
 
@@ -34,6 +37,7 @@ Abrís `http://127.0.0.1:8080`, elegís una plantilla y empezás a editar. Todo 
 - **Exportar / importar diseño** en JSON.
 - **Guardado local**: proyectos en `localStorage`, sin cuentas ni servidores.
 - **5 plantillas** para arrancar (alacena, cómoda, placard, bajo mesada, biblioteca).
+- **Modo agente (opcional)**: con `npm run agent`, un agente o script puede editar el mueble en vivo por HTTP/WebSocket, deshacer y pedir capturas del 3D. La app sigue siendo estática y sin backend si no usás este modo.
 
 | Vista 3D rotada | Cómoda de 4 cajones en 3D |
 |---|---|
@@ -109,6 +113,7 @@ src/
     commands.js     catálogo de comandos + sesión con historial (undo/redo)
   ui/               editor (sin frameworks)
     app.js          lógica y eventos (dispara comandos)
+    agent.js        cliente del modo agente (WebSocket)
     render2d.js     diagrama 2D con cotas
     render3d.js     visor 3D en canvas (rotar, zoom, ocultar frentes)
     geometry3d.js   cámara, proyección, caras y sombreado (puro y testeable)
@@ -116,8 +121,13 @@ src/
     dom.js          helpers
   index.js          API pública
 templates/          plantillas propias
-test/               tests del motor, despiece, geometría 3D (+ snapshots)
-dev/                herramientas de desarrollo (servidor, pruebas de UI, snapshots)
+test/               tests del motor, despiece, geometría 3D, comandos y servidor de agentes
+dev/                herramientas de desarrollo
+  server.mjs        servidor estático
+  agent-server.mjs  servidor del modo agente (HTTP + WebSocket + token)
+  ws-lite.mjs       WebSocket mínimo sin dependencias
+  agent-check.mjs   prueba E2E del modo agente con Chrome
+  ui-check.mjs      prueba E2E de la interfaz con Chrome
 docs/               documentación técnica
 ```
 
@@ -126,8 +136,9 @@ El motor y la geometría 3D no dependen del navegador: se usan igual en Node o e
 ## Tests
 
 ```bash
-npm test          # 135 tests: motor, despiece, plantillas, geometría 3D y capa de comandos
+npm test          # 153 tests: motor, despiece, plantillas, geometría 3D, comandos y servidor de agentes
 npm run ui-check  # 37 verificaciones de la interfaz con Chrome (3D, medidas, comandos y undo)
+npm run agent-check  # 14 verificaciones del modo agente con Chrome (HTTP → cambio en vivo, captura, seguridad)
 ```
 
 El motor fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
@@ -143,9 +154,9 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.3.2 | Abrir puertas y cajones con animación | ✅ |
 | v0.4 | Abrir cada puerta/cajón con un click y medidas sobre el modelo (cotas y hover) | ✅ |
 | v0.5-F1 | **Modo agente:** capa de comandos + undo (en la app) | ✅ |
-| v0.5-F2 | Servidor local con WebSocket + endpoints HTTP | 🚧 próximo |
-| v0.5-F3 | Adaptador MCP (stdio) para agentes de escritorio | ⏳ |
-| v0.5-F4 | Modo agente en la UI (indicador, log, resaltado, desconectar) | ⏳ |
+| v0.6-F2 | Servidor local con WebSocket + endpoints HTTP + badge de conexión | ✅ |
+| v0.6-F3 | Adaptador MCP (stdio) para agentes de escritorio | 🚧 próximo |
+| v0.6-F4 | Modo agente en la UI (log de comandos, resaltado, desconectar) | ⏳ |
 | v0.6 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |
 | v1.0 | Más tipos de mueble, historial de versiones, exportación a CNC | ⏳ |
 | — | **Publicación pública** (Pages, dominio, difusión) | ⏸ diferida |
@@ -154,13 +165,34 @@ La publicación queda **en pausa a propósito**: primero el proyecto tiene que d
 
 > **Descartado por decisión del usuario:** optimización de corte (nesting). El carpintero se encarga de acomodar las piezas en las placas.
 
-## Modo agente (próximo gran paso)
+## Modo agente (F2 operativo)
 
-La idea: que un agente (DSH, Claude Desktop, Cursor…) pueda **editar el mueble en vivo**, sin recargar la página, con comandos semánticos, undo real y capturas para que el agente "vea" lo que hace.
+Un agente (DSH, Claude Desktop, Cursor…) puede **editar el mueble en vivo**, sin recargar la página, con comandos semánticos, undo real y capturas para que el agente "vea" lo que hace.
 
 - La página sigue siendo la **fuente de verdad**; el agente manda comandos.
 - El servidor es **opcional y local** (sólo `127.0.0.1`, con token): la app sigue siendo estática y gratuita sin él.
-- MCP por `stdio` para agentes de escritorio; HTTP/WS para scripts y para DSH.
+- HTTP/WebSocket ya funcionan; MCP por `stdio` es el próximo paso (F3).
+
+```bash
+npm run agent                 # app + servidor de agentes en 8790
+TOKEN=$(cat .despiece-token)  # el token también se imprime al arrancar
+```
+
+| Método | Ruta | Para qué |
+|---|---|---|
+| `POST` | `/api/comando` | ejecutar un comando (body `{ nombre, argumentos }`) |
+| `GET` | `/api/estado` | diseño + resumen actuales |
+| `GET` | `/api/despiece` | lista de corte completa |
+| `GET` | `/api/captura.png` | PNG del visor 3D |
+| `GET` | `/api/salud` | estado del servidor (sin token) |
+
+```bash
+curl -s -X POST http://127.0.0.1:8790/api/comando \
+  -H "X-Despiece-Token: $TOKEN" -H "Content-Type: application/json" \
+  -d '{"nombre":"agregar_columna","argumentos":{"ancho":0.6}}'
+```
+
+![Modo agente conectado](docs/img/agente-1-conectado.png)
 
 📄 Plan completo, catálogo de comandos, protocolos, seguridad y criterios de aceptación: **[docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md)**.
 
