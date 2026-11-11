@@ -2,7 +2,7 @@
 
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
-> Estado: **v0.3 — editor web + visor 3D**.
+> Estado: **v0.3.1 — editor web + visor 3D**.
 > Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
@@ -21,7 +21,7 @@ Abrís `http://127.0.0.1:8080`, elegís una plantilla y empezás a editar. Todo 
 
 ## Qué hace
 
-- **Visor 3D interactivo**: el mueble se ve armado en 3D. Arrastrás para rotar, rueda para zoom, doble click para volver a la vista inicial. Se puede ocultar puertas y frentes para ver el interior, y alternar con la vista 2D.
+- **Visor 3D interactivo**: el mueble se ve armado en 3D, con **WebGL 2 y z-buffer real** (las piezas se ocluyen bien desde cualquier ángulo). Arrastrás para rotar, rueda para zoom, doble click para volver a la vista inicial. Cada tipo de pieza tiene su color: laterales azules, estantes verdes, frentes ámbar, fondos grises. Se puede ocultar puertas y frentes para ver el interior, alternar con la vista 2D y verlo **a pantalla completa**.
 - **Editor visual**: agregá y quitá columnas, cambiá anchos, agregá módulos de puertas (par o simple), cajones o estantes, con su alto y cantidad de cajones.
 - **Despiece en vivo**: cada cambio recalcula todas las piezas con sus medidas exactas de corte.
 - **Resumen**: medidas exteriores, cantidad de piezas, líneas de corte, mecanizados y superficie de panel.
@@ -36,9 +36,11 @@ Abrís `http://127.0.0.1:8080`, elegís una plantilla y empezás a editar. Todo 
 |---|---|
 | ![Vista 3D rotada](docs/img/editor-3d-rotado.png) | ![Cómoda en 3D](docs/img/editor-comoda.png) |
 
-| Vista 2D con cotas | Mecanizados |
+| 3D a pantalla completa | Vista 2D con cotas |
 |---|---|
-| ![Vista 2D](docs/img/editor-2d.png) | ![Tabla de mecanizados](docs/img/editor-mecanizados.png) |
+| ![3D a pantalla completa](docs/img/editor-3d-pantalla.png) | ![Vista 2D](docs/img/editor-2d.png) |
+
+![Tabla de mecanizados](docs/img/editor-mecanizados.png)
 
 ## Modelo de diseño
 
@@ -110,8 +112,8 @@ El motor y la geometría 3D no dependen del navegador: se usan igual en Node o e
 ## Tests
 
 ```bash
-npm test          # 74 tests: motor, despiece, plantillas y geometría 3D
-npm run ui-check  # 18 verificaciones de la interfaz con Chrome (incluye el visor 3D)
+npm test          # 78 tests: motor, despiece, plantillas, geometría y matrices 3D
+npm run ui-check  # 21 verificaciones de la interfaz con Chrome (incluye visor 3D WebGL)
 ```
 
 El motor fue validado pieza por pieza contra la salida observada de una app de referencia desaparecida (ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)): coincide en cantidad, posición y tamaño de cada pieza y en cada mecanizado.
@@ -123,6 +125,7 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.1 | Motor de despiece + despiece agrupado + CSV + tests | ✅ |
 | v0.2 | Editor visual, plantillas, guardado local, import/export | ✅ |
 | v0.3 | Visor 3D interactivo (rotar, zoom, ocultar frentes, 2D/3D) | ✅ |
+| v0.3.1 | Visor sobre WebGL 2 con z-buffer real, paleta por tipo de pieza y pantalla completa | ✅ |
 | v0.4 | Materiales y costos por proyecto, optimización de corte | 🚧 |
 | v0.5 | PDF de planos y PWA offline | ⏳ |
 | v1.0 | Historial de cambios, más tipos de mueble, exportación a CNC | ⏳ |

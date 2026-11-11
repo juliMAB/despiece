@@ -210,3 +210,58 @@ export function colorSombreado(hex, intensidad) {
   const aplicar = (valor) => Math.min(255, Math.max(0, Math.round(valor * intensidad)));
   return `rgb(${aplicar(r)}, ${aplicar(g)}, ${aplicar(b)})`;
 }
+
+/* ── matrices 4×4 en column-major (formato de WebGL) ─────────────────────── */
+
+/**
+ * Multiplica dos matrices 4×4 en column-major: resultado = a × b.
+ * @param {Float32Array|number[]} a
+ * @param {Float32Array|number[]} b
+ */
+export function multiplicarMatrices(a, b) {
+  const salida = new Float32Array(16);
+  for (let columna = 0; columna < 4; columna++) {
+    for (let fila = 0; fila < 4; fila++) {
+      let suma = 0;
+      for (let k = 0; k < 4; k++) suma += a[k * 4 + fila] * b[columna * 4 + k];
+      salida[columna * 4 + fila] = suma;
+    }
+  }
+  return salida;
+}
+
+/**
+ * Matriz de vista: lleva el mundo al espacio de la cámara
+ * (la cámara mira hacia -Z).
+ */
+export function matrizVista(camara) {
+  const { eye, right, up, forward } = camara;
+  return new Float32Array([
+    right.x, up.x, -forward.x, 0,
+    right.y, up.y, -forward.y, 0,
+    right.z, up.z, -forward.z, 0,
+    -punto(right, eye), -punto(up, eye), punto(forward, eye), 1,
+  ]);
+}
+
+/** Matriz de proyección en perspectiva. */
+export function matrizPerspectiva({ fovDeg = 38, aspect = 1, near = 0.005, far = 100 }) {
+  const f = 1 / Math.tan((fovDeg * Math.PI) / 360);
+  const rango = far / (near - far);
+  return new Float32Array([
+    f / aspect, 0, 0, 0,
+    0, f, 0, 0,
+    0, 0, rango, -1,
+    0, 0, rango * near, 0,
+  ]);
+}
+
+/** Aplica una matriz 4×4 a un punto (devuelve coordenadas homogéneas). */
+export function transformarPunto(m, p) {
+  return {
+    x: m[0] * p.x + m[4] * p.y + m[8] * p.z + m[12],
+    y: m[1] * p.x + m[5] * p.y + m[9] * p.z + m[13],
+    z: m[2] * p.x + m[6] * p.y + m[10] * p.z + m[14],
+    w: m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15],
+  };
+}

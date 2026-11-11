@@ -20,6 +20,10 @@ import {
   normalizar,
   punto,
   restar,
+  multiplicarMatrices,
+  matrizVista,
+  matrizPerspectiva,
+  transformarPunto,
 } from "../src/ui/geometry3d.js";
 
 /* ── traducción de piezas a cajas ────────────────────────────────────────── */
@@ -190,5 +194,62 @@ describe("caras", () => {
     const [r, g, b] = color.match(/\d+/g).map(Number);
     assert.ok(r <= 255 && g <= 255 && b <= 255);
     assert.ok(r < 245 || g < 158 || b < 11, "el sombreado oscurece el color base");
+  });
+});
+
+/* ── matrices para WebGL ─────────────────────────────────────────────────── */
+
+describe("matrices", () => {
+  const IDENTIDAD = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+  test("multiplicar por la identidad no cambia", () => {
+    const resultado = multiplicarMatrices(IDENTIDAD, IDENTIDAD);
+    assert.deepEqual([...resultado], [...IDENTIDAD]);
+  });
+
+  test("la matriz de vista lleva el ojo al origen", () => {
+    const camara = crearCamara({
+      target: { x: 0.2, y: 1, z: -0.1 },
+      yaw: 0.5,
+      pitch: 0.35,
+      distance: 4,
+      viewport: { width: 800, height: 400 },
+    });
+    const enCamara = transformarPunto(matrizVista(camara), camara.eye);
+    assert.ok(Math.abs(enCamara.x) < 1e-6);
+    assert.ok(Math.abs(enCamara.y) < 1e-6);
+    assert.ok(Math.abs(enCamara.z) < 1e-6);
+    assert.ok(Math.abs(enCamara.w - 1) < 1e-6);
+  });
+
+  test("la matriz de vista deja el objetivo delante de la cámara", () => {
+    const camara = crearCamara({
+      target: { x: 0, y: 0.5, z: 0 },
+      yaw: 0.8,
+      pitch: 0.4,
+      distance: 3,
+      viewport: { width: 800, height: 400 },
+    });
+    const objetivo = transformarPunto(matrizVista(camara), { x: 0, y: 0.5, z: 0 });
+    assert.ok(Math.abs(objetivo.x) < 1e-6);
+    assert.ok(Math.abs(objetivo.y) < 1e-6);
+    assert.ok(objetivo.z < 0, "la cámara mira hacia -Z");
+  });
+
+  test("la proyección deja el objetivo en el centro de la pantalla", () => {
+    const camara = crearCamara({
+      target: { x: 0, y: 0.5, z: 0 },
+      yaw: 0.7,
+      pitch: 0.35,
+      distance: 3,
+      viewport: { width: 800, height: 400 },
+    });
+    const vista = matrizVista(camara);
+    const proyeccion = matrizPerspectiva({ fovDeg: 38, aspect: 2, near: 0.01, far: 50 });
+    const mvp = multiplicarMatrices(proyeccion, vista);
+    const clip = transformarPunto(mvp, { x: 0, y: 0.5, z: 0 });
+    assert.ok(Math.abs(clip.x / clip.w) < 1e-6);
+    assert.ok(Math.abs(clip.y / clip.w) < 1e-6);
+    assert.ok(clip.z / clip.w > -1 && clip.z / clip.w < 1);
   });
 });

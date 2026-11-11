@@ -45,7 +45,8 @@ async function main() {
   const child = spawn(
     CHROME,
     [
-      "--headless=new", "--no-sandbox", "--disable-gpu",
+      "--headless=new", "--no-sandbox",
+      "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--use-gl=angle",
       `--remote-debugging-port=${PORT}`,
       `--user-data-dir=${profile}`,
       "--window-size=1440,980",
@@ -124,36 +125,42 @@ async function main() {
 
   /* ── visor 3D ─────────────────────────────────────────────────────────── */
 
+  // Cuenta píxeles no vacíos copiando el canvas (sirve para WebGL y para 2D).
   const pixelesPintados = async () =>
     evaluate(`
       (() => {
         const canvas = document.querySelector('.diagram-3d');
         if (!canvas || !canvas.width) return 0;
-        const datos = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        const copia = document.createElement('canvas');
+        copia.width = Math.min(320, canvas.width);
+        copia.height = Math.min(200, canvas.height);
+        const ctx = copia.getContext('2d');
+        ctx.drawImage(canvas, 0, 0, copia.width, copia.height);
+        const datos = ctx.getImageData(0, 0, copia.width, copia.height).data;
         let pintados = 0;
-        for (let i = 0; i < datos.length; i += 4) if (datos[i + 3] > 10) pintados++;
+        for (let i = 3; i < datos.length; i += 4) if (datos[i] > 10) pintados++;
         return pintados;
       })()
     `);
 
-  const firmaCanvas = async () =>
-    evaluate(`
-      (() => {
-        const canvas = document.querySelector('.diagram-3d');
-        if (!canvas || !canvas.width) return 0;
-        const datos = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
-        let hash = 0;
-        for (let i = 0; i < datos.length; i += 997) hash = (hash * 31 + datos[i]) >>> 0;
-        return hash;
-      })()
-    `);
+  // Firma del contenido del canvas para detectar cambios.
+  const firmaCanvas = async () => {
+    const url = await evaluate(
+      `document.querySelector('.diagram-3d')?.toDataURL('image/png') ?? ''`,
+    );
+    let hash = 0;
+    for (let i = 0; i < url.length; i += 17) hash = (hash * 31 + url.charCodeAt(i)) >>> 0;
+    return `${hash}:${url.length}`;
+  };
 
   check(
     "la vista 3D arranca activa",
     await evaluate(`document.querySelector('#diagrama').classList.contains('is-3d')`),
   );
+  const backend = await evaluate(`document.querySelector('.diagram-3d').dataset.renderer`);
+  check("el visor usa WebGL 2 (z-buffer)", backend === "webgl2", `backend: ${backend}`);
   const pintadosInicial = await pixelesPintados();
-  check("el visor 3D dibuja el mueble", pintadosInicial > 2000, `${pintadosInicial} píxeles`);
+  check("el visor 3D dibuja el mueble", pintadosInicial > 1000, `${pintadosInicial} píxeles`);
   await shot("ui-1b-3d.png");
 
   const firmaAntes = await firmaCanvas();
@@ -200,6 +207,27 @@ async function main() {
         return document.querySelector('#diagrama').classList.contains('is-3d') && canvas.width > 0 && canvas.height > 0;
       })()
     `),
+  );
+
+  // pantalla completa
+  await evaluate(`document.querySelector('#btn-pantalla').click()`);
+  await sleep(500);
+  check(
+    "el 3D pasa a pantalla completa",
+    await evaluate(`
+      (() => {
+        const tarjeta = document.querySelector('.canvas-card');
+        const canvas = document.querySelector('.diagram-3d');
+        return tarjeta.classList.contains('pantalla-completa') && canvas.clientHeight > 300;
+      })()
+    `),
+  );
+  await shot("ui-1e-pantalla.png");
+  await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
+  await sleep(450);
+  check(
+    "sale de pantalla completa con Esc",
+    await evaluate(`!document.querySelector('.canvas-card').classList.contains('pantalla-completa')`),
   );
 
   // 2) abrir una plantilla (cómoda)

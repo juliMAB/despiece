@@ -240,12 +240,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .canvas-card { display: flex; flex-direction: column; }
 .diagram {
   position: relative;
-  height: 380px;
+  height: clamp(340px, calc(100vh - 330px), 620px);
   background: var(--bg);
   border: 1px solid var(--line-soft);
   border-radius: 10px;
   overflow: hidden;
 }
+
+/* vista a pantalla completa */
+.canvas-card.pantalla-completa {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border-radius: 0;
+  padding: 14px 16px 16px;
+  background: var(--bg);
+  margin: 0;
+}
+.canvas-card.pantalla-completa .diagram { height: calc(100vh - 96px); }
+body.sin-scroll { overflow: hidden; }
 .diagram-2d {
   position: absolute;
   inset: 10px;

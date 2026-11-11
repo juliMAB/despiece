@@ -75,6 +75,7 @@ const refs = {
   lienzo2d: document.querySelector("#diagrama .diagram-2d"),
   canvas3d: document.querySelector("#diagrama .diagram-3d"),
   chkFrentes: $("chk-frentes"),
+  btnPantalla: $("btn-pantalla"),
   tabsVista: [...document.querySelectorAll(".tab-vista")],
   medidas: $("medidas-exteriores"),
   controles: $("controles"),
@@ -315,6 +316,19 @@ function aplicarVista() {
   if (state.vista3d) {
     requestAnimationFrame(() => asegurarVisor().redimensionar());
   }
+}
+
+/* ── pantalla completa del visor ─────────────────────────────────────────── */
+
+const tarjetaVista = refs.diagrama.closest(".canvas-card");
+
+function pantallaCompleta(activar) {
+  const activa = activar ?? !tarjetaVista.classList.contains("pantalla-completa");
+  tarjetaVista.classList.toggle("pantalla-completa", activa);
+  document.body.classList.toggle("sin-scroll", activa);
+  refs.btnPantalla.setAttribute("aria-pressed", String(activa));
+  refs.btnPantalla.textContent = activa ? "✕ Salir" : "⛶ Pantalla";
+  requestAnimationFrame(() => asegurarVisor().redimensionar());
 }
 
 /* ── renders ─────────────────────────────────────────────────────────────── */
@@ -751,6 +765,14 @@ function conectarEventos() {
 
   refs.chkFrentes.addEventListener("change", (evento) => {
     asegurarVisor().setMostrarFrentes(evento.target.checked);
+  });
+
+  refs.btnPantalla.addEventListener("click", () => pantallaCompleta());
+
+  document.addEventListener("keydown", (evento) => {
+    if (evento.key === "Escape" && tarjetaVista.classList.contains("pantalla-completa")) {
+      pantallaCompleta(false);
+    }
   });
 }
 
