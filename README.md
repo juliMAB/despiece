@@ -3,6 +3,7 @@
 **Diseñá muebles y obtené la lista exacta de piezas para cortar.** Libre, gratuito y sin cuentas ni backend.
 
 > Estado: **v0.4 — editor web + visor 3D interactivo con medidas**.
+> Próximo hito: **modo agente** (API local + MCP) — plan en [docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md).
 > Repositorio **privado por ahora**: la publicación está diferida hasta que el proyecto tenga identidad propia y suficiente diferencia con la app de referencia que inspiró la recuperación.
 
 ![Visor 3D de Despiece con la alacena de 2 puertas](docs/img/editor-3d.png)
@@ -138,12 +139,27 @@ El motor fue validado pieza por pieza contra la salida observada de una app de r
 | v0.3.1 | Visor sobre WebGL 2 con z-buffer real, paleta por tipo de pieza y pantalla completa | ✅ |
 | v0.3.2 | Abrir puertas y cajones con animación | ✅ |
 | v0.4 | Abrir cada puerta/cajón con un click y medidas sobre el modelo (cotas y hover) | ✅ |
-| v0.4 | Materiales y costos por proyecto, optimización de corte | 🚧 |
-| v0.5 | PDF de planos y PWA offline | ⏳ |
-| v1.0 | Historial de cambios, más tipos de mueble, exportación a CNC | ⏳ |
+| v0.5-F1 | **Modo agente:** capa de comandos + undo (en la app) | 🚧 próximo |
+| v0.5-F2 | Servidor local con WebSocket + endpoints HTTP | ⏳ |
+| v0.5-F3 | Adaptador MCP (stdio) para agentes de escritorio | ⏳ |
+| v0.5-F4 | Modo agente en la UI (indicador, log, resaltado, desconectar) | ⏳ |
+| v0.6 | Materiales y costos por proyecto, PDF de planos y PWA offline | ⏳ |
+| v1.0 | Más tipos de mueble, historial de versiones, exportación a CNC | ⏳ |
 | — | **Publicación pública** (Pages, dominio, difusión) | ⏸ diferida |
 
 La publicación queda **en pausa a propósito**: primero el proyecto tiene que diferenciarse de la app de referencia que se usó para reconstruir el motor (identidad visual propia, funciones que el original no tenía, documentación y licencia claras), y recién después se abre al público.
+
+> **Descartado por decisión del usuario:** optimización de corte (nesting). El carpintero se encarga de acomodar las piezas en las placas.
+
+## Modo agente (próximo gran paso)
+
+La idea: que un agente (DSH, Claude Desktop, Cursor…) pueda **editar el mueble en vivo**, sin recargar la página, con comandos semánticos, undo real y capturas para que el agente "vea" lo que hace.
+
+- La página sigue siendo la **fuente de verdad**; el agente manda comandos.
+- El servidor es **opcional y local** (sólo `127.0.0.1`, con token): la app sigue siendo estática y gratuita sin él.
+- MCP por `stdio` para agentes de escritorio; HTTP/WS para scripts y para DSH.
+
+📄 Plan completo, catálogo de comandos, protocolos, seguridad y criterios de aceptación: **[docs/PLAN-AGENTES.md](docs/PLAN-AGENTES.md)**.
 
 ## Origen
 
